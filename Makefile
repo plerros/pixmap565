@@ -14,11 +14,14 @@ CC := $(shell \
 	done \
 )
 
-$(TARGET): builddir main.o picture.o pixmap.o
-	$(CC) $(BUILD_DIR)/main.o $(BUILD_DIR)/picture.o $(BUILD_DIR)/pixmap.o -o $@
+$(TARGET): builddir llnode.o main.o picture.o pixmap.o
+	$(CC) $(BUILD_DIR)/llnode.o $(BUILD_DIR)/main.o $(BUILD_DIR)/picture.o $(BUILD_DIR)/pixmap.o -o $@
 
 builddir:
 	mkdir -p $(BUILD_DIR)
+
+llnode.o: $(SRC_DIR)/llnode/llnode.c
+	$(CC) -c $< -o $(BUILD_DIR)/llnode.o
 
 main.o: $(SRC_DIR)/main.c
 	$(CC) -c $< -o $(BUILD_DIR)/main.o
@@ -27,7 +30,7 @@ picture.o: $(SRC_DIR)/picture/picture.c
 	$(CC) -c $< -o $(BUILD_DIR)/picture.o
 
 pixmap.o: $(SRC_DIR)/pixmap/pixmap.c
-	$(CC) -c $< -o $(BUILD_DIR)/pixmap.o
+	$(CC) -I src/llnode -c $< -o $(BUILD_DIR)/pixmap.o
 
 .PHONY:
 clean:

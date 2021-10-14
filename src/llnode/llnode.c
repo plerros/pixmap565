@@ -4,8 +4,9 @@
  */
 
 #include <assert.h>
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
+
 #include "llnode.h"
 
 struct llnode

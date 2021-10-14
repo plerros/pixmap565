@@ -6,8 +6,8 @@
 #ifndef PIXMAP565_PIXMAP_H
 #define PIXMAP565_PIXMAP_H
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 struct pixmap;
 

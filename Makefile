@@ -24,13 +24,13 @@ llnode.o: $(SRC_DIR)/llnode/llnode.c
 	$(CC) -c $< -o $(BUILD_DIR)/llnode.o
 
 main.o: $(SRC_DIR)/main.c
-	$(CC) -c $< -o $(BUILD_DIR)/main.o
+	$(CC) -I $(SRC_DIR)/picture -I $(SRC_DIR)/pixmap -c $< -o $(BUILD_DIR)/main.o
 
 picture.o: $(SRC_DIR)/picture/picture.c
-	$(CC) -c $< -o $(BUILD_DIR)/picture.o
+	$(CC) -I $(SRC_DIR)/pixmap -c $< -o $(BUILD_DIR)/picture.o
 
 pixmap.o: $(SRC_DIR)/pixmap/pixmap.c
-	$(CC) -I src/llnode -c $< -o $(BUILD_DIR)/pixmap.o
+	$(CC) -I $(SRC_DIR)/llnode -c $< -o $(BUILD_DIR)/pixmap.o
 
 .PHONY:
 clean:

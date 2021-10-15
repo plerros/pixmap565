@@ -90,7 +90,7 @@ void picture_new(struct picture **ptr)
  * Green 0000011111100000
  * Blue  0000000000011111
  */
-	new->red_bitmask = 0x1f << 11;
+	new->red_bitmask = 0x1f << (6 + 5);
 	new->green_bitmask = 0x3f << 5;
 	new->blue_bitmask = 0x1f;
 
@@ -110,6 +110,28 @@ void picture_free(struct picture *ptr)
 
 	pixmap_free(ptr->matrix);
 	free(ptr);
+}
+
+void picture_set_pixmap(struct picture *ptr, struct pixmap *matrix)
+{
+	assert(ptr != NULL);
+	assert(ptr->matrix == NULL);
+
+	ptr->matrix = matrix;
+	ptr->width = pixmap_get_x(matrix);
+	ptr->height = pixmap_get_y(matrix);
+
+	ptr->image_size = ptr->width * ptr->height;
+	ptr->BMP_size_bytes += ptr->image_size * 2;
+}
+
+struct pixmap *picture_get_pixmap(struct picture *ptr)
+{
+	struct pixmap *ret = NULL;
+	ret = ptr->matrix;
+	ptr->matrix = NULL;
+
+	return ret;
 }
 
 void picture_read(struct picture *ptr, FILE *fp)
@@ -148,33 +170,38 @@ void picture_write(struct picture *ptr, FILE *fp)
 {
 	assert(fp != NULL);
 
-	int x = 78;
-	int y = 104;
-
+	unsigned long long byte = 0;
+// Bitmap file header
 	fput_uword(ptr->header_field, fp);
-	ptr->BMP_size_bytes += x * y * 2;
 	fput_udword(ptr->BMP_size_bytes, fp);
 	fput_uword(ptr->reserved_1, fp);
 	fput_uword(ptr->reserved_2, fp);
 	fput_udword(ptr->pixel_array_offset, fp);
+	byte += 14;
 
 // DIB HEADER (bytes 14~54)
 	fput_udword(ptr->DIB_header_size, fp);
-	ptr->width = x;
 	fput_dword(ptr->width, fp);
-	ptr->height = y;
 	fput_dword(ptr->height, fp);
 	fput_uword(ptr->color_planes, fp);
 	fput_uword(ptr->bits_per_pixel, fp);
 	fput_udword(ptr->compression_method, fp);
-	ptr->image_size = x * y;
 	fput_udword(ptr->image_size, fp);
 	fput_dword(ptr->horizontal_resolution, fp);
 	fput_dword(ptr->vertical_resolution, fp);
 	fput_udword(ptr->palette_colors, fp);
 	fput_udword(ptr->important_colors, fp);
+	byte += 40;
 
+// Extra bit masks
 	fput_udword(ptr->red_bitmask, fp);
 	fput_udword(ptr->green_bitmask, fp);
 	fput_udword(ptr->blue_bitmask, fp);
+	byte += 12;
+
+	for (; byte != ptr->pixel_array_offset; byte++)
+		fputc(0, fp);
+
+// Pixel array
+	pixmap_write(ptr->matrix, fp);
 }

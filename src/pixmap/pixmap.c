@@ -4,6 +4,7 @@
  */
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "pixmap.h"
@@ -14,6 +15,8 @@ struct pixmap
 {
 	unsigned long resx;
 	unsigned long resy;
+	bool flip_x;
+	bool flip_y;
 	struct llnode *first;
 	struct llnode *last;
 };
@@ -29,6 +32,8 @@ void pixmap_new(struct pixmap **ptr, unsigned long x)
 
 	new->resx = x;
 	new->resy = 0;
+	new->flip_x = false;
+	new->flip_y = false;
 	new->first = NULL;
 	new->last = NULL;
 
@@ -43,6 +48,16 @@ void pixmap_free(struct pixmap *ptr)
 	free(ptr);
 }
 
+void pixmap_flip_x(struct pixmap *ptr)
+{
+	ptr->flip_x = true;
+}
+
+void pixmap_flip_y(struct pixmap *ptr)
+{
+	ptr->flip_y = true;
+}
+
 void pixmap_add(struct pixmap *ptr, uint16_t pixel)
 {
 	assert(ptr != NULL);
@@ -55,6 +70,16 @@ void pixmap_add(struct pixmap *ptr, uint16_t pixel)
 	ptr->last = llnode_add(ptr->last, pixel);
 	if (tmp != ptr->last)
 		ptr->resy += 1;
+}
+
+unsigned long pixmap_get_x(struct pixmap *ptr)
+{
+	return(ptr->resx);
+}
+
+unsigned long pixmap_get_y(struct pixmap *ptr)
+{
+	return(ptr->resy);
 }
 
 int pixmap_read(struct pixmap *ptr, FILE *fp)

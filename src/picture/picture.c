@@ -12,38 +12,38 @@
 #include "picture.h"
 #include "pixmap.h"
 
-typedef unsigned short uword;
-typedef long dword;
-typedef unsigned long udword;
+typedef unsigned short uword_t;
+typedef long dword_t;
+typedef unsigned long udword_t;
 // all integer values are stored in little-endian format
 
 struct picture
 {
 // Bitmap file header (bytes 0~13)
-	uword  header_field;
-	udword BMP_size_bytes;
-	uword  reserved_1;
-	uword  reserved_2;
-	udword pixel_array_offset;
+	uword_t  magic_number; // (header_field)
+	udword_t file_bytes;
+	uword_t  reserved_1;
+	uword_t  reserved_2;
+	udword_t pixel_array_offset;
 
 // DIB HEADER
-// BITMAPINFOHEADER (bytes 14~53)
-	udword DIB_header_size;
-	dword  width;  // signed integer
-	dword  height; // signed integer
-	uword  color_planes;
-	uword  bits_per_pixel;
-	udword compression_method;
-	udword image_size;
-	dword  horizontal_resolution; // pixels per meter, signed integer
-	dword  vertical_resolution;   // pixels per meter, signed integer
-	udword palette_colors;
-	udword important_colors;
+	// BITMAPINFOHEADER (bytes 14~53)
+	udword_t DIB_bytes;
+	dword_t  width;  // signed integer
+	dword_t  height; // signed integer
+	uword_t  color_planes;
+	uword_t  bits_per_pixel;
+	udword_t compression_method;
+	udword_t image_size;
+	dword_t  horizontal_resolution; // pixels per meter, signed integer
+	dword_t  vertical_resolution;   // pixels per meter, signed integer
+	udword_t palette_colors;
+	udword_t important_colors;
 
 // Extra bit masks (bytes 54~65)
-	udword red_bitmask;
-	udword green_bitmask;
-	udword blue_bitmask;
+	udword_t red_bitmask;
+	udword_t green_bitmask;
+	udword_t blue_bitmask;
 
 // Color table
 // Gap1
@@ -61,16 +61,16 @@ void picture_new(struct picture **ptr)
 		abort();
 
 // Bitmap file header
-	new->header_field = 'B' + 'M' * (UCHAR_MAX + 1);
-	new->BMP_size_bytes = 14; // (the size of this header)
+	new->magic_number = 'B' + 'M' * (UCHAR_MAX + 1);
+	new->file_bytes = 14; // (14 is the size of this header)
 	new->reserved_1 = 0;
 	new->reserved_2 = 0;
 	new->pixel_array_offset = 14;
 
 // DIB header (BITMAPINFOHEADER)
-	new->DIB_header_size = 40;
-	new->BMP_size_bytes += new->DIB_header_size;
-	new->pixel_array_offset += new->DIB_header_size;
+	new->DIB_bytes = 40;
+	new->file_bytes += new->DIB_bytes;
+	new->pixel_array_offset += new->DIB_bytes;
 
 	new->width = 0;
 	new->height = 0;
@@ -94,7 +94,7 @@ void picture_new(struct picture **ptr)
 	new->green_bitmask = 0x3f << 5;
 	new->blue_bitmask = 0x1f;
 
-	new->BMP_size_bytes += 12;
+	new->file_bytes += 12;
 	new->pixel_array_offset += 12;
 
 // Pixel array
@@ -122,7 +122,7 @@ void picture_set_pixmap(struct picture *ptr, struct pixmap *matrix)
 	ptr->height = pixmap_get_y(matrix);
 
 	ptr->image_size = ptr->width * ptr->height;
-	ptr->BMP_size_bytes += ptr->image_size * 2;
+	ptr->file_bytes += ptr->image_size * 2;
 }
 
 struct pixmap *picture_get_pixmap(struct picture *ptr)
@@ -138,26 +138,26 @@ int picture_read(struct picture *ptr, FILE *fp)
 {
 	int rc = 0;
 
-	enum item {
+	enum item_ids{
 		// bitmap header
-		header_field,
-		BMP_size_bytes,
-		reserved_1, // ignore
-		reserved_2, // ignore
+		magic_number,
+		file_bytes,
+		reserved_1,
+		reserved_2,
 		pixel_array_offset,
 
 		// DIB header
-		DIB_header_size,
+		DIB_bytes,
 		width,
 		height,
-		color_planes,       // = 1
-		bits_per_pixel,     // = 16
-		compression_method, // = 3
+		color_planes,
+		bits_per_pixel,
+		compression_method,
 		image_size,
-		horizontal_resolution, // ignore
-		vertical_resolution,   // ignore
-		palette_colors,   // usually 0
-		important_colors, // usually 0
+		horizontal_resolution,
+		vertical_resolution,
+		palette_colors,
+		important_colors,
 
 		// extra bitmasks
 		red_bitmask,
@@ -169,49 +169,54 @@ int picture_read(struct picture *ptr, FILE *fp)
 		padding     // padding
 	};
 
-	enum types {
-		word,
+	enum item_types {
+		uword,
 		dword,
-		space,
+		udword,
+		zero,
 		pixel
 	};
 
-	int info[][2] = {
+	int type[] = {
 		// bitmap header
-		{word,  2},
-		{dword, 4},
-		{word,  2},
-		{word,  2},
-		{dword, 4},
+		uword,
+		udword,
+		uword,
+		uword,
+		udword,
 
 		// DIB header
-		{dword, 4},
-		{dword, 4}, // width
-		{dword, 4}, // height
-		{word,  2},
-		{word,  2},
-		{dword, 4},
-		{dword, 4},
-		{dword, 4},
-		{dword, 4},
-		{dword, 4},
-		{dword, 4},
+		udword,
+		dword, // width
+		dword, // height
+		udword,
+		udword,
+		udword,
+		udword,
+		dword,
+		dword,
+		udword,
+		udword,
 
 		// extra bitmasks
-		{dword, 4},
-		{dword, 4},
-		{dword, 4},
+		udword,
+		udword,
+		udword,
 
-		{space, 0}, // size will be filled in during execution
-		{pixel, 0},
-		{space, 0}
+		zero, // size will be filled in during execution
+		pixel,
+		zero
 	};
 
 	unsigned long offset = 0; // byte offset of the current item
 	unsigned long byte = 0;   // # of bytes from the file start
 
-	unsigned long long value = 0;
+	uword_t uw_value = 0;
+	dword_t dw_value = 0;
+	udword_t udw_value = 0;
 	int item = 0;
+
+	int zero_size = 0;
 
 	while (1) {
 		int ch = fgetc(fp);
@@ -223,28 +228,76 @@ int picture_read(struct picture *ptr, FILE *fp)
 
 		}
 
-		switch (info[item][1]) {
-			case word:
+		assert(ch <= UCHAR_MAX);
+		assert(byte >= offset);
+
+		unsigned long item_size;
+
+		switch (type[item]) {
+			case uword:
+				{
+					unsigned short tmp = ch;
+					for (int i = 0; i < byte - offset; i++)
+						tmp *= (UCHAR_MAX + 1);
+					uw_value += tmp;
+				}
+				item_size = 2;
 				break;
 
 			case dword:
+				{
+					long tmp = ch;
+					for (int i = 0; i < byte - offset; i++)
+						tmp *= (UCHAR_MAX + 1);
+					udw_value += tmp;
+
+					if (byte - offset == 3) {
+						if (ch & ((signed char) -1)) {
+							// is negative?
+							udw_value *= -1;
+						}
+					}
+				}
+				item_size = 4;
 				break;
 
-			case space:
+			case udword:
+				{
+					unsigned long tmp = ch;
+					for (int i = 0; i < byte - offset; i++)
+						tmp *= (UCHAR_MAX + 1);
+					udw_value += tmp;
+				}
+				item_size = 4;
+				break;
+
+			case zero:
+				item_size = zero_size;
 				break;
 
 			case pixel:
+				{
+					unsigned long long tmp = ch;
+					for (int i = 0; i < byte - offset; i++)
+						tmp *= (UCHAR_MAX + 1);
+					uw_value += tmp;
+				}
+				if ((byte - offset) % 2 == 1) {
+					pixmap_add(ptr->matrix, uw_value);
+					uw_value = 0;
+				}
+				item_size = ptr->width;
 				break;
 		}
 		byte++;
 
-		if (byte - offset == info[item][2]) {
+		if (byte - offset == item_size) {
 			switch (item) {
-				case header_field:
+				case magic_number:
 					// check BM
 					break;
 
-				case BMP_size_bytes:
+				case file_bytes:
 					break;
 
 				case reserved_1:
@@ -256,26 +309,26 @@ int picture_read(struct picture *ptr, FILE *fp)
 					break;
 
 				case pixel_array_offset:
-					// pixel_array_offset < BMP_size_bytes
+					// pixel_array_offset < file_bytes
 					break;
 
-				case DIB_header_size:
-					// DIB_header_size + 12 <= pixel_array_offset
-					// DIB_header_size >= 40
+				case DIB_bytes:
+					// DIB_bytes + 12 <= pixel_array_offset
+					// DIB_bytes >= 40
 					// set gap = pixel_array_offset -14 -40 -12
 					item++;
 					break;
 
 				case width:
 					// THIS IS SIGNED!
-					// width * 2 <= BMP_size_bytes - pixel_array_offset
+					// width * 2 <= file_bytes - pixel_array_offset
 					// set pixel line
 					// set padding
 					break;
 
 				case height:
 					// THIS IS SIGNED!
-					// width * height * 2 <= BMP_size_bytes - pixel_array_offset
+					// width * height * 2 <= file_bytes - pixel_array_offset
 					item++;
 					break;
 
@@ -326,9 +379,25 @@ int picture_read(struct picture *ptr, FILE *fp)
 
 				case padding:
 					break;
+				default:
+					break;
 			}
 
-			item++;
+			if (item == pixel_line) {
+				if (ptr->height % 4 != 0) {
+					item = padding;
+					zero_size = 4 - (ptr->height % 4);
+				}
+			}
+			else if (item == padding) {
+				item = pixel_line;
+			} else {
+				item++;
+			}
+
+			uw_value = 0;
+			dw_value = 0;
+			udw_value = 0;
 		}
 	}
 }
@@ -366,15 +435,15 @@ void picture_write(struct picture *ptr, FILE *fp)
 
 	unsigned long long byte = 0;
 // Bitmap file header
-	fput_uword(ptr->header_field, fp);
-	fput_udword(ptr->BMP_size_bytes, fp);
+	fput_uword(ptr->magic_number, fp);
+	fput_udword(ptr->file_bytes, fp);
 	fput_uword(ptr->reserved_1, fp);
 	fput_uword(ptr->reserved_2, fp);
 	fput_udword(ptr->pixel_array_offset, fp);
 	byte += 14;
 
 // DIB HEADER (bytes 14~54)
-	fput_udword(ptr->DIB_header_size, fp);
+	fput_udword(ptr->DIB_bytes, fp);
 	fput_dword(ptr->width, fp);
 	fput_dword(ptr->height, fp);
 	fput_uword(ptr->color_planes, fp);

@@ -134,9 +134,203 @@ struct pixmap *picture_get_pixmap(struct picture *ptr)
 	return ret;
 }
 
-void picture_read(struct picture *ptr, FILE *fp)
+int picture_read(struct picture *ptr, FILE *fp)
 {
+	int rc = 0;
 
+	enum item {
+		// bitmap header
+		header_field,
+		BMP_size_bytes,
+		reserved_1, // ignore
+		reserved_2, // ignore
+		pixel_array_offset,
+
+		// DIB header
+		DIB_header_size,
+		width,
+		height,
+		color_planes,       // = 1
+		bits_per_pixel,     // = 16
+		compression_method, // = 3
+		image_size,
+		horizontal_resolution, // ignore
+		vertical_resolution,   // ignore
+		palette_colors,   // usually 0
+		important_colors, // usually 0
+
+		// extra bitmasks
+		red_bitmask,
+		green_bitmask,
+		blue_bitmask,
+
+		gap,        // space gap
+		pixel_line, // pixel(s)
+		padding     // padding
+	};
+
+	enum types {
+		word,
+		dword,
+		space,
+		pixel
+	};
+
+	int info[][2] = {
+		// bitmap header
+		{word,  2},
+		{dword, 4},
+		{word,  2},
+		{word,  2},
+		{dword, 4},
+
+		// DIB header
+		{dword, 4},
+		{dword, 4}, // width
+		{dword, 4}, // height
+		{word,  2},
+		{word,  2},
+		{dword, 4},
+		{dword, 4},
+		{dword, 4},
+		{dword, 4},
+		{dword, 4},
+		{dword, 4},
+
+		// extra bitmasks
+		{dword, 4},
+		{dword, 4},
+		{dword, 4},
+
+		{space, 0}, // size will be filled in during execution
+		{pixel, 0},
+		{space, 0}
+	};
+
+	unsigned long offset = 0; // byte offset of the current item
+	unsigned long byte = 0;   // # of bytes from the file start
+
+	unsigned long long value = 0;
+	int item = 0;
+
+	while (1) {
+		int ch = fgetc(fp);
+
+		if (feof(fp)) {
+
+		}
+		if (ferror(fp)) {
+
+		}
+
+		switch (info[item][1]) {
+			case word:
+				break;
+
+			case dword:
+				break;
+
+			case space:
+				break;
+
+			case pixel:
+				break;
+		}
+		byte++;
+
+		if (byte - offset == info[item][2]) {
+			switch (item) {
+				case header_field:
+					// check BM
+					break;
+
+				case BMP_size_bytes:
+					break;
+
+				case reserved_1:
+					// ignore
+					break;
+
+				case reserved_2:
+					// ignore
+					break;
+
+				case pixel_array_offset:
+					// pixel_array_offset < BMP_size_bytes
+					break;
+
+				case DIB_header_size:
+					// DIB_header_size + 12 <= pixel_array_offset
+					// DIB_header_size >= 40
+					// set gap = pixel_array_offset -14 -40 -12
+					item++;
+					break;
+
+				case width:
+					// THIS IS SIGNED!
+					// width * 2 <= BMP_size_bytes - pixel_array_offset
+					// set pixel line
+					// set padding
+					break;
+
+				case height:
+					// THIS IS SIGNED!
+					// width * height * 2 <= BMP_size_bytes - pixel_array_offset
+					item++;
+					break;
+
+				case color_planes:
+					// = 1
+					break;
+
+				case bits_per_pixel:
+					// = 16
+					break;
+
+				case compression_method:
+					// = 3
+					break;
+
+				case image_size:
+					// image_size = width * height
+					break;
+
+				case horizontal_resolution:
+					// ignore
+					break;
+
+				case vertical_resolution:
+					// ignore
+					break;
+
+				case palette_colors:
+					break;
+
+				case important_colors:
+					break;
+
+				case red_bitmask:
+					break;
+
+				case green_bitmask:
+					break;
+
+				case blue_bitmask:
+					break;
+
+				case gap:
+					break;
+
+				case pixel_line:
+					break;
+
+				case padding:
+					break;
+			}
+
+			item++;
+		}
+	}
 }
 
 static void fput_uword(unsigned short value, FILE *fp)

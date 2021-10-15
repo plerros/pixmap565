@@ -34,7 +34,7 @@ struct picture
 	uword_t  color_planes;
 	uword_t  bits_per_pixel;
 	udword_t compression_method;
-	udword_t image_size;
+	udword_t image_size; // in bytes
 	dword_t  horizontal_resolution; // pixels per meter, signed integer
 	dword_t  vertical_resolution;   // pixels per meter, signed integer
 	udword_t palette_colors;
@@ -189,8 +189,8 @@ int picture_read(struct picture *ptr, FILE *fp)
 		udword,
 		dword, // width
 		dword, // height
-		udword,
-		udword,
+		uword,
+		uword,
 		udword,
 		udword,
 		dword,
@@ -222,7 +222,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 		int ch = fgetc(fp);
 
 		if (feof(fp)) {
-
+			break;
 		}
 		if (ferror(fp)) {
 
@@ -231,7 +231,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 		assert(ch <= UCHAR_MAX);
 		assert(byte >= offset);
 
-		unsigned long item_size;
+		unsigned long item_size = 0;
 
 		switch (type[item]) {
 			case uword:
@@ -249,12 +249,12 @@ int picture_read(struct picture *ptr, FILE *fp)
 					long tmp = ch;
 					for (int i = 0; i < byte - offset; i++)
 						tmp *= (UCHAR_MAX + 1);
-					udw_value += tmp;
+					dw_value += tmp;
 
 					if (byte - offset == 3) {
 						if (ch & ((signed char) -1)) {
 							// is negative?
-							udw_value *= -1;
+							dw_value *= -1;
 						}
 					}
 				}
@@ -277,15 +277,19 @@ int picture_read(struct picture *ptr, FILE *fp)
 
 			case pixel:
 				{
-					unsigned long long tmp = ch;
+					unsigned short tmp = ch;
 					for (int i = 0; i < byte - offset; i++)
 						tmp *= (UCHAR_MAX + 1);
 					uw_value += tmp;
 				}
 				if ((byte - offset) % 2 == 1) {
+					if (ptr->matrix == NULL) {
+						pixmap_new(&(ptr->matrix), ptr->width);
+					}
 					pixmap_add(ptr->matrix, uw_value);
 					uw_value = 0;
 				}
+
 				item_size = ptr->width;
 				break;
 		}
@@ -294,6 +298,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 		if (byte - offset == item_size) {
 			switch (item) {
 				case magic_number:
+					assert(ch != ptr->magic_number);
 					// check BM
 					break;
 
@@ -310,13 +315,13 @@ int picture_read(struct picture *ptr, FILE *fp)
 
 				case pixel_array_offset:
 					// pixel_array_offset < file_bytes
+					ptr->pixel_array_offset = udw_value;
 					break;
 
 				case DIB_bytes:
 					// DIB_bytes + 12 <= pixel_array_offset
 					// DIB_bytes >= 40
 					// set gap = pixel_array_offset -14 -40 -12
-					item++;
 					break;
 
 				case width:
@@ -324,12 +329,12 @@ int picture_read(struct picture *ptr, FILE *fp)
 					// width * 2 <= file_bytes - pixel_array_offset
 					// set pixel line
 					// set padding
+					ptr->width = dw_value;
 					break;
 
 				case height:
 					// THIS IS SIGNED!
 					// width * height * 2 <= file_bytes - pixel_array_offset
-					item++;
 					break;
 
 				case color_planes:
@@ -345,7 +350,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 					break;
 
 				case image_size:
-					// image_size = width * height
+					// image_size = width * height (in bytes)
 					break;
 
 				case horizontal_resolution:
@@ -372,6 +377,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 					break;
 
 				case gap:
+
 					break;
 
 				case pixel_line:
@@ -383,21 +389,29 @@ int picture_read(struct picture *ptr, FILE *fp)
 					break;
 			}
 
-			if (item == pixel_line) {
-				if (ptr->height % 4 != 0) {
-					item = padding;
-					zero_size = 4 - (ptr->height % 4);
-				}
-			}
-			else if (item == padding) {
+			if (item == padding)
 				item = pixel_line;
-			} else {
+			else
 				item++;
+
+			if (item == gap) {
+				assert(ptr->pixel_array_offset >= byte);
+				zero_size = ptr->pixel_array_offset - byte;
+
+			}
+
+			if (item == padding) {
+				if (ptr->height % 4 != 0)
+					zero_size = 4 - (ptr->height % 4);
+				else
+					item = pixel_line;
 			}
 
 			uw_value = 0;
 			dw_value = 0;
 			udw_value = 0;
+			offset = byte;
+
 		}
 	}
 }

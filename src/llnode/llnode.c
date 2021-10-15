@@ -32,6 +32,8 @@ void llnode_new(struct llnode **ptr, unsigned long size)
 	new->logical_size = 0;
 	new->next = NULL;
 	new->prev = NULL;
+
+	*ptr = new;
 }
 
 void llnode_free(struct llnode *ptr)
@@ -43,13 +45,15 @@ void llnode_free(struct llnode *ptr)
 		assert(ptr == ptr->prev->next);
 		ptr = ptr->prev;
 	}
-	while (ptr->next != NULL) {
-		assert(ptr == ptr->next->prev);
+	do {
+		struct llnode *next = ptr->next;
+		if (next != NULL)
+			assert(ptr == next->prev);
+
 		free(ptr->array);
-		struct llnode *tmp = ptr->next;
 		free(ptr);
-		ptr = tmp;
-	}
+		ptr = next;
+	} while (ptr != NULL);
 }
 
 struct llnode *llnode_add(struct llnode *ptr, uint16_t value)

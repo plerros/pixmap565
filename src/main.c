@@ -10,13 +10,14 @@
 
 int main(int argc, char *argv[])
 {
-	FILE *fp = fopen("header.bin", "w+");
+	FILE *fp = fopen("about.bmp", "r");
 	assert(fp != NULL);
 
 	// (test code)
 	struct picture *pic = NULL;
 	picture_new(&pic);
-	picture_write(pic, fp);
+//	picture_write(pic, fp);
+	picture_read(pic, fp);
 	picture_free(pic);
 
 	fclose(fp);

@@ -4,6 +4,7 @@
  */
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -75,23 +76,35 @@ struct llnode *llnode_add(struct llnode *ptr, uint16_t value)
 	return ptr;
 }
 
-struct llnode *llnode_write(struct llnode *ptr, FILE *fp)
+int llnode_write(struct llnode *ptr, FILE *fp, bool flip_x, bool flip_y)
 {
 	assert(ptr != NULL);
-	while (ptr->prev != NULL) {
-		assert(ptr == ptr->prev->next);
-		ptr = ptr->prev;
+	if (flip_y == false) {
+		while (ptr->prev != NULL) {
+			assert(ptr == ptr->prev->next);
+			ptr = ptr->prev;
+		}
 	}
+	else {
+		while (ptr->next != NULL) {
+			assert(ptr == ptr->next->prev);
+			ptr = ptr->next;
+		}
+	}
+
 	do {
 		assert(ptr->logical_size == ptr->size);
 		for (int i = 0; i < ptr->logical_size; i++) {
-			uint16_t value = ptr->array[i];
+			uint16_t value = flip_x ? ptr->array[ptr->logical_size -1 - i] : ptr->array[i];
 			for (int j = 0; j < 2; j++) {
 				int tmp = value % (UCHAR_MAX + 1); // & 0x0f would probably be just fine
 				value = value / (UCHAR_MAX + 1);
 				fputc(tmp, fp);
 			}
 		}
-		ptr = ptr->next;
+		if (flip_y == false)
+			ptr = ptr->next;
+		else
+			ptr = ptr->prev;
 	} while (ptr != NULL);
 }

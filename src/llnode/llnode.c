@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "llnode.h"
 
@@ -72,4 +73,25 @@ struct llnode *llnode_add(struct llnode *ptr, uint16_t value)
 	ptr->array[ptr->logical_size] = value;
 	ptr->logical_size += 1;
 	return ptr;
+}
+
+struct llnode *llnode_write(struct llnode *ptr, FILE *fp)
+{
+	assert(ptr != NULL);
+	while (ptr->prev != NULL) {
+		assert(ptr == ptr->prev->next);
+		ptr = ptr->prev;
+	}
+	do {
+		assert(ptr->logical_size == ptr->size);
+		for (int i = 0; i < ptr->logical_size; i++) {
+			uint16_t value = ptr->array[i];
+			for (int j = 0; j < 2; j++) {
+				int tmp = value % (UCHAR_MAX + 1); // & 0x0f would probably be just fine
+				value = value / (UCHAR_MAX + 1);
+				fputc(tmp, fp);
+			}
+		}
+		ptr = ptr->next;
+	} while (ptr != NULL);
 }

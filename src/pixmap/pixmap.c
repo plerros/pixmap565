@@ -89,5 +89,8 @@ int pixmap_read(struct pixmap *ptr, FILE *fp)
 
 int pixmap_write(struct pixmap *ptr, FILE *fp)
 {
-
+	assert(ptr != NULL);
+	int rc = 0;
+	rc = llnode_write(ptr->first, fp);
+	return rc;
 }

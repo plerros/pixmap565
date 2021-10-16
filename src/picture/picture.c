@@ -334,11 +334,12 @@ int picture_read(struct picture *ptr, FILE *fp)
 			case pixel:
 				{
 					unsigned short tmp = ch;
-					for (int i = 0; i < byte - offset; i++)
+					for (int i = 0; i < (byte - offset) % BYTES_PER_PIXEL; i++)
 						tmp *= (UCHAR_MAX + 1);
 					uw_value += tmp;
 				}
 				if ((byte - offset) % BYTES_PER_PIXEL == BYTES_PER_PIXEL - 1) {
+					assert(uw_value != 0);
 					pixmap_add(ptr->matrix, uw_value);
 					uw_value = 0;
 				}

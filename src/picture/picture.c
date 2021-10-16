@@ -12,10 +12,24 @@
 #include "picture.h"
 #include "pixmap.h"
 
+#define BYTES_PER_PIXEL (8 / CHAR_BIT + 1)
+
+#if (CHAR_BIT % 8) != 0
+#error unsupported architecture
+#endif
+
 typedef unsigned short uword_t;
 typedef long dword_t;
 typedef unsigned long udword_t;
 // all integer values are stored in little-endian format
+
+static udword_t dword_abs(dword_t value)
+{
+	if (value < 0)
+		value *= -1;
+	
+	return (value);
+}
 
 struct picture
 {
@@ -121,8 +135,8 @@ void picture_set_pixmap(struct picture *ptr, struct pixmap *matrix)
 	ptr->width = pixmap_get_x(matrix);
 	ptr->height = pixmap_get_y(matrix);
 
-	ptr->image_size = ptr->width * ptr->height;
-	ptr->file_bytes += ptr->image_size * 2;
+	ptr->image_size = ptr->width * ptr->height * BYTES_PER_PIXEL;
+	ptr->file_bytes += ptr->image_size;
 }
 
 struct pixmap *picture_get_pixmap(struct picture *ptr)
@@ -166,15 +180,16 @@ int picture_read(struct picture *ptr, FILE *fp)
 
 		gap,        // space gap
 		pixel_line, // pixel(s)
-		padding     // padding
+		padding,     // padding
+		gap2
 	};
 
 	enum item_types {
-		uword,
-		dword,
-		udword,
-		zero,
-		pixel
+		uword,  // 2 bytes
+		dword,  // 4 bytes
+		udword, // 4 bytes
+		skip,   // skip_bytes
+		pixel   // width*height*bytesperpixel
 	};
 
 	int type[] = {
@@ -203,9 +218,10 @@ int picture_read(struct picture *ptr, FILE *fp)
 		udword,
 		udword,
 
-		zero, // size will be filled in during execution
+		skip,
 		pixel,
-		zero
+		skip,
+		skip
 	};
 
 	unsigned long offset = 0; // byte offset of the current item
@@ -216,15 +232,18 @@ int picture_read(struct picture *ptr, FILE *fp)
 	udword_t udw_value = 0;
 	int item = 0;
 
-	int zero_size = 0;
+	int skip_bytes = 0;
+	int gap_size = 0;
 
 	while (1) {
 		int ch = fgetc(fp);
 
 		if (feof(fp)) {
+			assert(0);
 			break;
 		}
 		if (ferror(fp)) {
+			assert(0);
 
 		}
 
@@ -271,8 +290,8 @@ int picture_read(struct picture *ptr, FILE *fp)
 				item_size = 4;
 				break;
 
-			case zero:
-				item_size = zero_size;
+			case skip:
+				item_size = skip_bytes;
 				break;
 
 			case pixel:
@@ -282,7 +301,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 						tmp *= (UCHAR_MAX + 1);
 					uw_value += tmp;
 				}
-				if ((byte - offset) % 2 == 1) {
+				if ((byte - offset) % BYTES_PER_PIXEL == BYTES_PER_PIXEL - 1) {
 					if (ptr->matrix == NULL) {
 						pixmap_new(&(ptr->matrix), ptr->width);
 					}
@@ -298,11 +317,11 @@ int picture_read(struct picture *ptr, FILE *fp)
 		if (byte - offset == item_size) {
 			switch (item) {
 				case magic_number:
-					assert(ch != ptr->magic_number);
-					// check BM
+					assert(uw_value == ptr->magic_number); // == BM
 					break;
 
 				case file_bytes:
+					ptr->file_bytes = udw_value;
 					break;
 
 				case reserved_1:
@@ -314,43 +333,53 @@ int picture_read(struct picture *ptr, FILE *fp)
 					break;
 
 				case pixel_array_offset:
-					// pixel_array_offset < file_bytes
+					assert(udw_value <= ptr->file_bytes);
 					ptr->pixel_array_offset = udw_value;
 					break;
 
 				case DIB_bytes:
-					// DIB_bytes + 12 <= pixel_array_offset
-					// DIB_bytes >= 40
+					assert(udw_value <= ptr->pixel_array_offset - 14);
+					assert(udw_value >= 40);
+					ptr->DIB_bytes = udw_value;
+
+					gap_size = ptr->pixel_array_offset -14 - ptr->DIB_bytes;
 					// set gap = pixel_array_offset -14 -40 -12
 					break;
 
 				case width:
 					// THIS IS SIGNED!
-					// width * 2 <= file_bytes - pixel_array_offset
-					// set pixel line
-					// set padding
+					// if <= 0 Warn the user
+					assert(dword_abs(dw_value) <= (ptr->file_bytes - ptr->pixel_array_offset) / BYTES_PER_PIXEL);
+
 					ptr->width = dw_value;
 					break;
 
 				case height:
 					// THIS IS SIGNED!
-					// width * height * 2 <= file_bytes - pixel_array_offset
+					// if <= 0 Warn the user
+					assert(dword_abs(dw_value) <= (ptr->file_bytes - ptr->pixel_array_offset) / BYTES_PER_PIXEL);
+					if (ptr->width != 0)
+						assert(dword_abs(dw_value) <= (ptr->file_bytes - ptr->pixel_array_offset) / (BYTES_PER_PIXEL * dword_abs(ptr->width)));
+					
+					assert(dw_value * ptr->height * BYTES_PER_PIXEL <= ptr->file_bytes - ptr->pixel_array_offset);
+					ptr->height = dw_value;
 					break;
 
 				case color_planes:
-					// = 1
+					assert(uw_value == 1);
 					break;
 
 				case bits_per_pixel:
-					// = 16
+					assert(uw_value == 16);
 					break;
 
 				case compression_method:
-					// = 3
+					assert(udw_value == 3);
 					break;
 
 				case image_size:
-					// image_size = width * height (in bytes)
+					assert(udw_value == dword_abs(ptr->width) * dword_abs(ptr->height) * BYTES_PER_PIXEL);
+					ptr->image_size = udw_value;
 					break;
 
 				case horizontal_resolution:
@@ -362,22 +391,26 @@ int picture_read(struct picture *ptr, FILE *fp)
 					break;
 
 				case palette_colors:
+					// maybe ignore?
 					break;
 
 				case important_colors:
+					// maybe ignore?
 					break;
 
 				case red_bitmask:
+					assert(udw_value == ptr->red_bitmask);
 					break;
 
 				case green_bitmask:
+					assert(udw_value == ptr->green_bitmask);
 					break;
 
 				case blue_bitmask:
+					assert(udw_value == ptr->blue_bitmask);
 					break;
 
 				case gap:
-
 					break;
 
 				case pixel_line:
@@ -385,35 +418,43 @@ int picture_read(struct picture *ptr, FILE *fp)
 
 				case padding:
 					break;
+
+				case gap2:
+					goto out;
 				default:
 					break;
 			}
 
-			if (item == padding)
-				item = pixel_line;
-			else
-				item++;
+			if (byte == ptr->file_bytes)
+				goto out;
 
-			if (item == gap) {
-				assert(ptr->pixel_array_offset >= byte);
-				zero_size = ptr->pixel_array_offset - byte;
-
-			}
-
-			if (item == padding) {
-				if (ptr->height % 4 != 0)
-					zero_size = 4 - (ptr->height % 4);
-				else
-					item = pixel_line;
-			}
+			skip_bytes = 0;
+			do {
+				item++; // we assume (item < gap2)
+				if (item == gap) {
+					assert(byte <= ptr->pixel_array_offset);
+					skip_bytes = ptr->pixel_array_offset - byte;
+				}
+				if (item == padding) {
+					if (ptr->height % 4 != 0)
+						skip_bytes = 4 - (ptr->height % 4);
+					else if (byte < ptr->pixel_array_offset + ptr->image_size)
+						item = pixel_line;
+				}
+				if (item == gap2) {
+					assert(byte < ptr->file_bytes);
+					skip_bytes = ptr->file_bytes - byte;
+				}
+			} while (type[item] == skip && skip_bytes == 0);
 
 			uw_value = 0;
 			dw_value = 0;
 			udw_value = 0;
 			offset = byte;
-
 		}
 	}
+out:
+	return rc;
 }
 
 static void fput_uword(unsigned short value, FILE *fp)

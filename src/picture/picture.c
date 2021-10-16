@@ -147,9 +147,40 @@ struct pixmap *picture_get_pixmap(struct picture *ptr)
 
 	return ret;
 }
+void print_warning()
+{
+	fprintf(stderr, "\n[WARNING]: ");
+}
+
+void print_error()
+{
+	fprintf(stderr, "\n[ERROR]: ");
+}
+
+void conflicting_data()
+{
+	print_error();
+	fprintf(stderr, "The input file has conflicting data.\n");
+}
+
+void bad_data(const char *structure, const char *name)
+{
+	print_error();
+	fprintf(stderr,
+		"The input file has invalid or unsupported data.\n"
+		"structure: %s\n"
+		"field:     %s\n", structure, name
+	);
+}
 
 int picture_read(struct picture *ptr, FILE *fp)
 {
+	assert(ptr != NULL);
+	assert(fp != NULL);
+
+	pixmap_free(ptr->matrix);
+	ptr->matrix = NULL;
+
 	int rc = 0;
 
 	enum item_ids{
@@ -235,23 +266,30 @@ int picture_read(struct picture *ptr, FILE *fp)
 	int skip_bytes = 0;
 	int gap_size = 0;
 
-	while (1) {
+	while (rc == 0) {
 		int ch = fgetc(fp);
 
 		if (feof(fp)) {
-			assert(0);
-			break;
+			print_error();
+			fprintf(stderr, "Unexpected end of file.\n");
+			rc = 1;
+			goto out;
 		}
 		if (ferror(fp)) {
-			assert(0);
-
+			print_error();
+			fprintf(stderr, "Unexpected end of file, caused by I/O error.\n");
+			rc = 1;
+			goto out;
 		}
 
-		assert(ch <= UCHAR_MAX);
-		assert(byte >= offset);
+		if (ch > UCHAR_MAX) {
+			print_error();
+			fprintf(stderr, "The value of byte %lu is out of range [0, %lu].\n", byte, UCHAR_MAX);
+			rc = 1;
+			goto out;
+		}
 
 		unsigned long item_size = 0;
-
 		switch (type[item]) {
 			case uword:
 				{
@@ -302,13 +340,9 @@ int picture_read(struct picture *ptr, FILE *fp)
 					uw_value += tmp;
 				}
 				if ((byte - offset) % BYTES_PER_PIXEL == BYTES_PER_PIXEL - 1) {
-					if (ptr->matrix == NULL) {
-						pixmap_new(&(ptr->matrix), ptr->width);
-					}
 					pixmap_add(ptr->matrix, uw_value);
 					uw_value = 0;
 				}
-
 				item_size = ptr->width;
 				break;
 		}
@@ -317,11 +351,20 @@ int picture_read(struct picture *ptr, FILE *fp)
 		if (byte - offset == item_size) {
 			switch (item) {
 				case magic_number:
-					assert(uw_value == ptr->magic_number); // == BM
+					if (uw_value != ptr->magic_number) {
+						bad_data("Bitmap file header", "magic number");
+						rc = 1;
+					}
 					break;
 
 				case file_bytes:
-					ptr->file_bytes = udw_value;
+					if (udw_value < 14 + 40 + 12) {
+						bad_data("Bitmap file header", "filesize");
+						fprintf(stderr, "expected:  >= %lu\n", 14 + 40 + 12);
+						rc = 1;
+					} else {
+						ptr->file_bytes = udw_value;
+					}
 					break;
 
 				case reserved_1:
@@ -333,53 +376,113 @@ int picture_read(struct picture *ptr, FILE *fp)
 					break;
 
 				case pixel_array_offset:
-					assert(udw_value <= ptr->file_bytes);
-					ptr->pixel_array_offset = udw_value;
+					if (udw_value > ptr->file_bytes) {
+						conflicting_data();
+						fprintf(stderr, "pixel_array_offset > filesize.\n");
+						rc = 1;
+					} else {
+						ptr->pixel_array_offset = udw_value;
+					}
 					break;
 
 				case DIB_bytes:
-					assert(udw_value <= ptr->pixel_array_offset - 14);
-					assert(udw_value >= 40);
-					ptr->DIB_bytes = udw_value;
-
-					gap_size = ptr->pixel_array_offset -14 - ptr->DIB_bytes;
-					// set gap = pixel_array_offset -14 -40 -12
+					if (udw_value > ptr->pixel_array_offset - 14) {
+						conflicting_data();
+						fprintf(stderr, "DIB_header_size > pixel_array_offset - BMP_header_size\n");
+						fprintf(stderr, "(i.e., the DIB header and pixel array overlap)\n");
+						rc = 1;
+					}
+					else if (udw_value < 40) {
+						bad_data("DIB header", "DIB header size");
+						fprintf(stderr, "expected:  >= %lu\n", 40);
+						rc = 1;
+					} else {
+						ptr->DIB_bytes = udw_value;
+						gap_size = ptr->pixel_array_offset -14 - ptr->DIB_bytes;
+					}
 					break;
 
 				case width:
-					// THIS IS SIGNED!
-					// if <= 0 Warn the user
-					assert(dword_abs(dw_value) <= (ptr->file_bytes - ptr->pixel_array_offset) / BYTES_PER_PIXEL);
-
-					ptr->width = dw_value;
+					if (dw_value <= 0) {
+						print_warning();
+						fprintf(stderr, "negative width\n");
+					}
+					/*
+					 * Because we are converting from signed to unsigned, and BYTES_PER_PIXEL <= 2:
+					 * abs(dw_value) <= ULONG_MAX / BYTES_PER_PIXEL
+					 */
+					if (dword_abs(dw_value) * BYTES_PER_PIXEL > (ptr->file_bytes - ptr->pixel_array_offset)) {
+						conflicting_data();
+						fprintf(stderr, "width * %u > filesize - pixel_array_offset\n", BYTES_PER_PIXEL);
+						fprintf(stderr, "(i.e., too many pixels or too little space)\n");
+						rc = 1;
+					} else {
+						ptr->width = dw_value;
+						assert(ptr->matrix == NULL);
+						pixmap_new(&(ptr->matrix), ptr->width);
+					}
 					break;
 
 				case height:
-					// THIS IS SIGNED!
-					// if <= 0 Warn the user
-					assert(dword_abs(dw_value) <= (ptr->file_bytes - ptr->pixel_array_offset) / BYTES_PER_PIXEL);
-					if (ptr->width != 0)
-						assert(dword_abs(dw_value) <= (ptr->file_bytes - ptr->pixel_array_offset) / (BYTES_PER_PIXEL * dword_abs(ptr->width)));
-					
-					assert(dw_value * ptr->height * BYTES_PER_PIXEL <= ptr->file_bytes - ptr->pixel_array_offset);
-					ptr->height = dw_value;
+					if (dw_value <= 0) {
+						print_warning();
+						fprintf(stderr, "negative height\n");
+					}
+					else if (dword_abs(dw_value) > (ptr->file_bytes - ptr->pixel_array_offset)) {
+						conflicting_data();
+						fprintf(stderr, "height * %u > filesize - pixel_array_offset\n", BYTES_PER_PIXEL);
+						fprintf(stderr, "(i.e., too many pixels or too little space)\n");
+						rc = 1;
+					}
+					else if (dword_abs(dw_value) * BYTES_PER_PIXEL > ULONG_MAX /  dword_abs(ptr->width)) {
+						conflicting_data();
+						fprintf(stderr, "height * width * %u > %lu\n", BYTES_PER_PIXEL, ULONG_MAX);
+						fprintf(stderr, "(i.e., too many pixels)\n");
+						rc = 1;
+					}
+					else if (dword_abs(ptr->width) * dword_abs(dw_value) * BYTES_PER_PIXEL > ptr->file_bytes - ptr->pixel_array_offset) {
+						conflicting_data();
+						fprintf(stderr, "height * width * %u > filesize - pixel_array_offset\n", BYTES_PER_PIXEL);
+						fprintf(stderr, "(i.e., too many pixels or too little space)\n");
+						rc = 1;
+					} else {
+						ptr->height = dw_value;
+					}
 					break;
 
 				case color_planes:
-					assert(uw_value == 1);
+					if (uw_value != 1) {
+						bad_data("DIB header", "color planes");
+						fprintf(stderr, "expected:  %lu\n", 1);
+						rc = 1;
+					}
 					break;
 
 				case bits_per_pixel:
-					assert(uw_value == 16);
+					if (uw_value != 16) {
+						bad_data("DIB header", "bits per pixel");
+						fprintf(stderr, "expected:  %lu\n", 16);
+						rc = 1;
+					}
 					break;
 
 				case compression_method:
-					assert(udw_value == 3);
+					if (udw_value != 3) {
+						bad_data("DIB header", "compression method");
+						fprintf(stderr, "expected:  %lu\n", 3);
+						rc = 1;
+					}
 					break;
 
 				case image_size:
-					assert(udw_value == dword_abs(ptr->width) * dword_abs(ptr->height) * BYTES_PER_PIXEL);
-					ptr->image_size = udw_value;
+					if (udw_value == dword_abs(ptr->width) * BYTES_PER_PIXEL * dword_abs(ptr->height) * BYTES_PER_PIXEL) {
+						conflicting_data();
+						fprintf(stderr, "image_size != height * %u * width * %u\n", BYTES_PER_PIXEL, BYTES_PER_PIXEL);
+						fprintf(stderr, "(i.e., too many pixels or too little space)\n");
+						rc = 1;
+					} else {
+						ptr->image_size = udw_value;
+					}
 					break;
 
 				case horizontal_resolution:
@@ -399,15 +502,27 @@ int picture_read(struct picture *ptr, FILE *fp)
 					break;
 
 				case red_bitmask:
-					assert(udw_value == ptr->red_bitmask);
+					if (udw_value != ptr->red_bitmask) {
+						bad_data("Extra bit masks", "red bitmask");
+						fprintf(stderr, "expected:  %lu\n", ptr->red_bitmask);
+						rc = 1;
+					}
 					break;
 
 				case green_bitmask:
-					assert(udw_value == ptr->green_bitmask);
+					if (udw_value != ptr->green_bitmask) {
+						bad_data("Extra bit masks", "green bitmask");
+						fprintf(stderr, "expected:  %lu\n", ptr->green_bitmask);
+						rc = 1;
+					}
 					break;
 
 				case blue_bitmask:
-					assert(udw_value == ptr->blue_bitmask);
+					if (udw_value != ptr->blue_bitmask) {
+						bad_data("Extra bit masks", "blue bitmask");
+						fprintf(stderr, "expected:  %lu\n", ptr->blue_bitmask);
+						rc = 1;
+					}
 					break;
 
 				case gap:
@@ -421,9 +536,12 @@ int picture_read(struct picture *ptr, FILE *fp)
 
 				case gap2:
 					goto out;
+
 				default:
 					break;
 			}
+			if (rc)
+				break;
 
 			if (byte == ptr->file_bytes)
 				goto out;
@@ -454,6 +572,9 @@ int picture_read(struct picture *ptr, FILE *fp)
 		}
 	}
 out:
+	if (rc)
+		fprintf(stderr, "\n");
+
 	return rc;
 }
 

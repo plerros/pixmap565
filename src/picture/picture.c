@@ -264,7 +264,6 @@ int picture_read(struct picture *ptr, FILE *fp)
 	int item = 0;
 
 	int skip_bytes = 0;
-	int gap_size = 0;
 
 	while (rc == 0) {
 		int ch = fgetc(fp);
@@ -367,13 +366,8 @@ int picture_read(struct picture *ptr, FILE *fp)
 					}
 					break;
 
-				case reserved_1:
-					// ignore
-					break;
-
-				case reserved_2:
-					// ignore
-					break;
+				//case reserved_1:
+				//case reserved_2:
 
 				case pixel_array_offset:
 					if (udw_value > ptr->file_bytes) {
@@ -398,7 +392,6 @@ int picture_read(struct picture *ptr, FILE *fp)
 						rc = 1;
 					} else {
 						ptr->DIB_bytes = udw_value;
-						gap_size = ptr->pixel_array_offset -14 - ptr->DIB_bytes;
 					}
 					break;
 
@@ -485,21 +478,10 @@ int picture_read(struct picture *ptr, FILE *fp)
 					}
 					break;
 
-				case horizontal_resolution:
-					// ignore
-					break;
-
-				case vertical_resolution:
-					// ignore
-					break;
-
-				case palette_colors:
-					// maybe ignore?
-					break;
-
-				case important_colors:
-					// maybe ignore?
-					break;
+				//case horizontal_resolution:
+				//case vertical_resolution:
+				//case palette_colors:
+				//case important_colors:
 
 				case red_bitmask:
 					if (udw_value != ptr->red_bitmask) {
@@ -525,14 +507,9 @@ int picture_read(struct picture *ptr, FILE *fp)
 					}
 					break;
 
-				case gap:
-					break;
-
-				case pixel_line:
-					break;
-
-				case padding:
-					break;
+				//case gap:
+				//case pixel_line:
+				//case padding:
 
 				case gap2:
 					goto out;

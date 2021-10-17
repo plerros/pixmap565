@@ -532,8 +532,8 @@ int picture_read(struct picture *ptr, FILE *fp)
 					skip_bytes = ptr->pixel_array_offset - byte;
 				}
 				if (item == padding) {
-					if (ptr->height % 4 != 0)
-						skip_bytes = 4 - (ptr->height % 4);
+					if ((ptr->width * BYTES_PER_PIXEL) % 4 != 0)
+						skip_bytes = 4 - ((ptr->width * BYTES_PER_PIXEL) % 4);
 					else if (byte < ptr->pixel_array_offset + ptr->image_size)
 						item = pixel_line;
 				}

@@ -6,7 +6,6 @@
 #ifndef PIXMAP565_LLNODE_H
 #define PIXMAP565_LLNODE_H
 
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 

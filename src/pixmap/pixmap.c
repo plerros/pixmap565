@@ -4,7 +4,6 @@
  */
 
 #include <assert.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "pixmap.h"
@@ -15,8 +14,6 @@ struct pixmap
 {
 	unsigned long resx;
 	unsigned long resy;
-	bool flip_x;
-	bool flip_y;
 	struct llnode *first;
 	struct llnode *last;
 };
@@ -32,8 +29,6 @@ void pixmap_new(struct pixmap **ptr, unsigned long x)
 
 	new->resx = x;
 	new->resy = 0;
-	new->flip_x = false;
-	new->flip_y = false;
 	new->first = NULL;
 	new->last = NULL;
 
@@ -50,12 +45,17 @@ void pixmap_free(struct pixmap *ptr)
 
 void pixmap_flip_x(struct pixmap *ptr)
 {
-	ptr->flip_x = true;
+	assert(ptr != NULL);
+	llnode_flip_x(ptr->first);
 }
 
 void pixmap_flip_y(struct pixmap *ptr)
 {
-	ptr->flip_y = true;
+	assert(ptr != NULL);
+	llnode_flip_y(ptr->first);
+	struct llnode *tmp = ptr->first;
+	ptr->first = ptr->last;
+	ptr->last = tmp;
 }
 
 void pixmap_add(struct pixmap *ptr, uint16_t pixel)
@@ -84,10 +84,16 @@ unsigned long pixmap_get_y(struct pixmap *ptr)
 
 int pixmap_read(struct pixmap *ptr, FILE *fp)
 {
+	assert(ptr != NULL);
+	int rc = 0;
 
+	return rc;
 }
 
 int pixmap_write(struct pixmap *ptr, FILE *fp)
 {
-
+	assert(ptr != NULL);
+	int rc = 0;
+	rc = llnode_write(ptr->first, fp);
+	return rc;
 }

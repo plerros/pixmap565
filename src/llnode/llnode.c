@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "llnode.h"
 
@@ -72,4 +73,65 @@ struct llnode *llnode_add(struct llnode *ptr, uint16_t value)
 	ptr->array[ptr->logical_size] = value;
 	ptr->logical_size += 1;
 	return ptr;
+}
+
+void llnode_flip_x(struct llnode *ptr)
+{
+	assert(ptr != NULL);
+	while (ptr->prev != NULL) {
+		assert(ptr == ptr->prev->next);
+		ptr = ptr->prev;
+	}
+	do {
+		assert(ptr->logical_size == ptr->size);
+		for (unsigned long i = 0; i < ptr->logical_size / 2; i++) {
+			uint16_t tmp = ptr->array[i];
+			ptr->array[i] = ptr->array[ptr->logical_size -1 - i];
+			ptr->array[ptr->logical_size -1 - i] = tmp;
+		}
+	} while (ptr != NULL);
+}
+
+void llnode_flip_y(struct llnode *ptr)
+{
+	assert(ptr != NULL);
+	while (ptr->prev != NULL) {
+		assert(ptr == ptr->prev->next);
+		ptr = ptr->prev;
+	}
+	do {
+		struct llnode *next = ptr->next;
+
+		ptr->next = ptr->prev;
+		ptr->prev = next; 
+
+		ptr = next;
+	} while (ptr != NULL);
+}
+
+int llnode_write(struct llnode *ptr, FILE *fp)
+{
+	assert(ptr != NULL);
+	int rc = 0;
+	while (ptr->prev != NULL) {
+		assert(ptr == ptr->prev->next);
+		ptr = ptr->prev;
+	}
+	do {
+		assert(ptr->logical_size == ptr->size);
+		for (unsigned long i = 0; i < ptr->logical_size; i++) {
+			uint16_t value = ptr->array[i];
+			for (int j = 0; j < 2; j++) {
+				int tmp = value % (UCHAR_MAX + 1); // & 0x0f would probably be just fine
+				value = value / (UCHAR_MAX + 1);
+				rc = (fputc(tmp, fp) != tmp);
+				if (rc)
+					goto out;
+			}
+		}
+		ptr = ptr->next;
+	} while (ptr != NULL);
+
+out:
+	return rc;
 }

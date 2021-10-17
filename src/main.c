@@ -4,12 +4,16 @@
  */
 
 #include <assert.h>
+#include <stdbool.h>
 
 #include "picture.h"
 #include "pixmap.h"
 
 int main(int argc, char *argv[])
 {
+	bool flip_x = false;
+	bool flip_y = false;
+
 	FILE *fp = fopen("about.bmp", "r");
 	assert(fp != NULL);
 
@@ -19,7 +23,17 @@ int main(int argc, char *argv[])
 	// (test code)
 	struct picture *pic = NULL;
 	picture_new(&pic);
+
+	struct pixmap *pix = NULL;
+
 	picture_read(pic, fp);
+
+	if (flip_x)
+		pixmap_flip_x(pix);
+
+	if (flip_y)
+		pixmap_flip_y(pix);
+
 	picture_write(pic, out);
 	picture_free(pic);
 

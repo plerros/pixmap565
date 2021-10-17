@@ -45,11 +45,13 @@ void pixmap_free(struct pixmap *ptr)
 
 void pixmap_flip_x(struct pixmap *ptr)
 {
+	assert(ptr != NULL);
 	llnode_flip_x(ptr->first);
 }
 
 void pixmap_flip_y(struct pixmap *ptr)
 {
+	assert(ptr != NULL);
 	llnode_flip_y(ptr->first);
 	struct llnode *tmp = ptr->first;
 	ptr->first = ptr->last;

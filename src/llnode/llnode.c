@@ -78,6 +78,7 @@ struct llnode *llnode_add(struct llnode *ptr, uint16_t value)
 
 void llnode_flip_x(struct llnode *ptr)
 {
+	assert(ptr != NULL);
 	while (ptr->prev != NULL) {
 		assert(ptr == ptr->prev->next);
 		ptr = ptr->prev;
@@ -94,6 +95,7 @@ void llnode_flip_x(struct llnode *ptr)
 
 void llnode_flip_y(struct llnode *ptr)
 {
+	assert(ptr != NULL);
 	while (ptr->prev != NULL) {
 		assert(ptr == ptr->prev->next);
 		ptr = ptr->prev;
@@ -123,7 +125,7 @@ int llnode_write(struct llnode *ptr, FILE *fp)
 			for (int j = 0; j < 2; j++) {
 				int tmp = value % (UCHAR_MAX + 1); // & 0x0f would probably be just fine
 				value = value / (UCHAR_MAX + 1);
-				rc = (fputc(tmp, fp) == tmp);
+				rc = (fputc(tmp, fp) != tmp);
 				if (rc)
 					goto out;
 			}

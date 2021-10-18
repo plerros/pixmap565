@@ -8,10 +8,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "file_utils.h"
 #include "pixmap.h"
 #include "llnode.h"
-
-#define BYTES_PER_PIXEL (8 / CHAR_BIT + 1)
 
 typedef unsigned short uword_t;
 
@@ -87,11 +86,6 @@ unsigned long pixmap_get_y(struct pixmap *ptr)
 	return(ptr->resy);
 }
 
-static void print_error()
-{
-	fprintf(stderr, "\n[ERROR]: ");
-}
-
 int pixmap_read(struct pixmap *ptr, FILE *fp)
 {
 	assert(ptr != NULL);
@@ -123,11 +117,11 @@ int pixmap_read(struct pixmap *ptr, FILE *fp)
 		int ch = fgetc(fp);
 
 		if (feof(fp)) {
-			/*
-			print_error();
-			fprintf(stderr, "Unexpected end of file.\n");
-			*/
-			rc = 1;
+			if (!llnode_is_full(ptr->last)) {
+				print_error();
+				fprintf(stderr, "Unexpected end of file.\n");
+				rc = 1;
+			}
 			goto out;
 		}
 		if (ferror(fp)) {

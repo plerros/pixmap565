@@ -4,10 +4,12 @@
  */
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <limits.h>
 
+#include "file_utils.h"
 #include "llnode.h"
 
 struct llnode
@@ -109,6 +111,12 @@ void llnode_flip_y(struct llnode *ptr)
 	} while (ptr != NULL);
 }
 
+bool llnode_is_full(struct llnode *ptr)
+{
+	assert(ptr->logical_size > ptr->size);
+	return (ptr->logical_size == ptr->size);
+}
+
 int llnode_write(struct llnode *ptr, FILE *fp)
 {
 	assert(ptr != NULL);
@@ -120,14 +128,9 @@ int llnode_write(struct llnode *ptr, FILE *fp)
 	do {
 		assert(ptr->logical_size == ptr->size);
 		for (unsigned long i = 0; i < ptr->logical_size; i++) {
-			uint16_t value = ptr->array[i];
-			for (int j = 0; j < 2; j++) {
-				int tmp = value % (UCHAR_MAX + 1); // & 0x0f would probably be just fine
-				value = value / (UCHAR_MAX + 1);
-				rc = (fputc(tmp, fp) != tmp);
-				if (rc)
-					goto out;
-			}
+			rc = fput_uword(ptr->array[i], fp);
+			if (rc)
+				goto out;
 		}
 		ptr = ptr->next;
 	} while (ptr != NULL);

@@ -6,7 +6,6 @@
 #ifndef PIXMAP565_LLNODE_H
 #define PIXMAP565_LLNODE_H
 
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -20,7 +19,6 @@ struct llnode *llnode_add(struct llnode *ptr, uint16_t value);
 void llnode_flip_x(struct llnode *ptr);
 void llnode_flip_y(struct llnode *ptr);
 
-bool llnode_is_full(struct llnode *ptr);
 int llnode_write(struct llnode *ptr, FILE *fp);
 
 #endif /* PIXMAP565_LLNODE_H */

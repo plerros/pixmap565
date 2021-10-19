@@ -11,33 +11,36 @@
 
 int main(int argc, char *argv[])
 {
-	bool flip_x = false;
-	bool flip_y = false;
-
-	FILE *fp = fopen("about.bmp", "r");
-	assert(fp != NULL);
-
-	FILE *out = fopen("out.bmp", "w+");
-	assert(out != NULL);
-
 	// (test code)
-	struct picture *pic = NULL;
-	picture_new(&pic);
+	char in[] = "about.bmp";
+	char out[] = "out.bin";
 
+	struct picture *pic = NULL;
 	struct pixmap *pix = NULL;
 
-	picture_read(pic, fp);
+	FILE *infile = fopen(in, "r");
+	assert(infile != NULL);
 
-	if (flip_x)
-		pixmap_flip_x(pix);
+	FILE *outfile = fopen(out, "w+");
+	assert(outfile != NULL);
 
-	if (flip_y)
-		pixmap_flip_y(pix);
-
-	picture_write(pic, out);
+	if (is_pic(in))
+	{
+		picture_new(&pic);
+		picture_read(pic, infile);
+		pix = picture_get_pixmap(pic);
+		pixmap_write(pix, outfile);
+	} else {
+		pixmap_new(&pix, 78);
+		pixmap_read(pix, infile);
+		picture_set_pixmap(pic, pix);
+		pix = NULL;
+		picture_write(pic, outfile);
+	}
 	picture_free(pic);
+	pixmap_free(pix);
 
-	fclose(out);
-	fclose(fp);
+	fclose(infile);
+	fclose(outfile);
 	return 0;
 }

@@ -12,8 +12,6 @@
 #include "pixmap.h"
 #include "llnode.h"
 
-typedef unsigned short uword_t;
-
 struct pixmap
 {
 	unsigned long resx;
@@ -144,12 +142,7 @@ int pixmap_read(struct pixmap *ptr, FILE *fp)
 				break;
 
 			case pixel:
-				{ 
-					unsigned short tmp = ch;
-					for (int i = 0; i < (byte - offset) % BYTES_PER_PIXEL; i++)
-						tmp *= (UCHAR_MAX + 1);
-					uw_value += tmp;
-				}
+				uw_value += ((uword_t)ch) << ((byte - offset) % BYTES_PER_PIXEL) * CHAR_BIT;
 				if ((byte - offset) % BYTES_PER_PIXEL == BYTES_PER_PIXEL - 1) {
 					assert(uw_value != 0);
 					pixmap_add(ptr, uw_value);

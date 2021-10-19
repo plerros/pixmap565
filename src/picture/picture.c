@@ -9,13 +9,13 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "file_utils.h"
 #include "picture.h"
 #include "pixmap.h"
 
 // all integer values are stored in little-endian format
-
 
 struct picture
 {
@@ -61,7 +61,7 @@ void picture_new(struct picture **ptr)
 		abort();
 
 // Bitmap file header
-	new->magic_number = 'B' + 'M' * (UCHAR_MAX + 1);
+	new->magic_number = 'B' + ('M' << CHAR_BIT);
 	new->file_bytes = 14; // (14 is the size of this header)
 	new->reserved_1 = 0;
 	new->reserved_2 = 0;
@@ -117,6 +117,8 @@ void picture_set_pixmap(struct picture *ptr, struct pixmap *matrix)
 	assert(ptr != NULL);
 	assert(ptr->matrix == NULL);
 
+	pixmap_flip_y(matrix);
+
 	ptr->matrix = matrix;
 	ptr->width = pixmap_get_x(matrix);
 	ptr->height = pixmap_get_y(matrix);
@@ -131,6 +133,33 @@ struct pixmap *picture_get_pixmap(struct picture *ptr)
 	ret = ptr->matrix;
 	ptr->matrix = NULL;
 
+	// by default the image is stored upside down
+	if (ptr->height > 0)
+		pixmap_flip_y(ret);
+
+	if (ptr->width < 0)
+		pixmap_flip_x(ret);
+
+	return ret;
+}
+
+bool is_pic(char *filename)
+{
+	bool ret = false;
+	if (filename == NULL)
+		goto out;
+
+	size_t size = strlen(filename);
+	if (size < 5)
+		goto out;
+
+	char bmp_ext[5] = ".bmp\0";
+	char tmp[5];
+	strcpy(tmp, &(filename[size - 4]));
+
+	if (strcmp(tmp, bmp_ext) == 0)
+		ret = true;
+out:
 	return ret;
 }
 
@@ -273,45 +302,44 @@ int picture_read(struct picture *ptr, FILE *fp)
 		unsigned long item_size = 0;
 		switch (type[item]) {
 			case uword:
-				{
-					unsigned short tmp = ch;
-					for (int i = 0; i < byte - offset; i++)
-						tmp *= (UCHAR_MAX + 1);
-					uw_value += tmp;
-				}
+				uw_value += ((uword_t)ch) << (byte - offset) * CHAR_BIT;
 				item_size = 2;
 				break;
 
 			case dword:
 				{
-					unsigned char uch = ch;
-					signed char *sch = (signed char *)(&uch);
+					short      ss = dw_value;
+					int        si = dw_value;
+					long       sl = dw_value;
+					long long sll = dw_value;
 
-					bool negative = false;
-					if (byte - offset == 3 && *sch < 0) {
-						*sch *= -1;
-						negative = 1;
+					unsigned char *arr = NULL;
+					if (sizeof(short) == 4) {
+						arr = (void *)(&ss);
 					}
+					else if (sizeof(int) == 4) {
+						arr = (void *)(&si);
+					}
+					else if (sizeof(long) == 4) {
+						arr = (void *)(&sl);
+					}
+					else if (sizeof(long long) == 4) {
+						arr = (void *)(&sll);
+					} else {
+						fprintf(stderr, "Unsupported system: None of the integer types are 4 bytes long\n");
+						abort();
+					}
+					arr[byte - offset] = ch;
+					dw_value = 0;
+					for (int i = 3; i >= 0; i--)
+						dw_value = (dw_value << CHAR_BIT) + arr[i];
 
-					long tmp = uch;
-					for (int i = 0; i < byte - offset; i++)
-						tmp *= (UCHAR_MAX + 1);
-
-					dw_value += tmp;
-
-					if (negative)
-						dw_value *= -1;
+					item_size = 4;
 				}
-				item_size = 4;
 				break;
 
 			case udword:
-				{
-					unsigned long tmp = ch;
-					for (int i = 0; i < byte - offset; i++)
-						tmp *= (UCHAR_MAX + 1);
-					udw_value += tmp;
-				}
+				udw_value += ((udword_t)ch) << (byte - offset) * CHAR_BIT;
 				item_size = 4;
 				break;
 
@@ -320,12 +348,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 				break;
 
 			case pixel:
-				{
-					unsigned short tmp = ch;
-					for (int i = 0; i < (byte - offset) % BYTES_PER_PIXEL; i++)
-						tmp *= (UCHAR_MAX + 1);
-					uw_value += tmp;
-				}
+				uw_value += ((uword_t)ch) << ((byte - offset) % BYTES_PER_PIXEL) * CHAR_BIT;
 				if ((byte - offset) % BYTES_PER_PIXEL == BYTES_PER_PIXEL - 1) {
 					assert(uw_value != 0);
 					pixmap_add(ptr->matrix, uw_value);
@@ -401,7 +424,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 					} else {
 						ptr->width = dw_value;
 						assert(ptr->matrix == NULL);
-						pixmap_new(&(ptr->matrix), ptr->width);
+						pixmap_new(&(ptr->matrix), dword_abs(ptr->width));
 					}
 					break;
 
@@ -410,7 +433,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 						print_warning();
 						fprintf(stderr, "negative height\n");
 					}
-					else if (dword_abs(dw_value) > (ptr->file_bytes - ptr->pixel_array_offset)) {
+					if (dword_abs(dw_value) > (ptr->file_bytes - ptr->pixel_array_offset)) {
 						conflicting_data();
 						fprintf(stderr, "height * %u > filesize - pixel_array_offset\n", BYTES_PER_PIXEL);
 						fprintf(stderr, "(i.e., too many pixels or too little space)\n");

@@ -4,7 +4,6 @@
  */
 
 #include <assert.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -105,7 +104,7 @@ void llnode_flip_y(struct llnode *ptr)
 		struct llnode *next = ptr->next;
 
 		ptr->next = ptr->prev;
-		ptr->prev = next; 
+		ptr->prev = next;
 
 		ptr = next;
 	} while (ptr != NULL);

@@ -131,6 +131,11 @@ int llnode_write(struct llnode *ptr, FILE *fp)
 			if (rc)
 				goto out;
 		}
+		for (unsigned long i = 0; i < (ptr->logical_size * BYTES_PER_PIXEL) % 4; i++) {
+			rc = (fputc(0, fp) != 0);
+			if (rc)
+				goto out;
+		}
 		ptr = ptr->next;
 	} while (ptr != NULL);
 

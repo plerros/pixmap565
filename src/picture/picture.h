@@ -21,6 +21,6 @@ struct pixmap *picture_get_pixmap(struct picture *ptr);
 bool is_pic(char *filename);
 
 int picture_read(struct picture *ptr, FILE *fp);
-void picture_write(struct picture *ptr, FILE *fp);
+int picture_write(struct picture *ptr, FILE *fp);
 
 #endif /* PIXMAP565_PICTURE_H */

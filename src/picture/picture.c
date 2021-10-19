@@ -123,7 +123,8 @@ void picture_set_pixmap(struct picture *ptr, struct pixmap *matrix)
 	ptr->width = pixmap_get_x(matrix);
 	ptr->height = pixmap_get_y(matrix);
 
-	ptr->image_size = ptr->width * ptr->height * BYTES_PER_PIXEL;
+	ptr->image_size = dword_abs(ptr->width) * dword_abs(ptr->height) * BYTES_PER_PIXEL;
+	ptr->image_size += (ptr->image_size % 4);
 	ptr->file_bytes += ptr->image_size;
 }
 
@@ -184,56 +185,48 @@ void bad_data(const char *structure, const char *name)
 	);
 }
 
-int picture_read(struct picture *ptr, FILE *fp)
+enum item_ids{
+	// bitmap header
+	magic_number,
+	file_bytes,
+	reserved_1,
+	reserved_2,
+	pixel_array_offset,
+
+	// DIB header
+	DIB_bytes,
+	width,
+	height,
+	color_planes,
+	bits_per_pixel,
+	compression_method,
+	image_size,
+	horizontal_resolution,
+	vertical_resolution,
+	palette_colors,
+	important_colors,
+
+	// extra bitmasks
+	red_bitmask,
+	green_bitmask,
+	blue_bitmask,
+
+	gap,        // space gap
+	pixel_line, // pixel(s)
+	padding,     // padding
+	gap2
+};
+
+enum item_types {
+	uword,  // 2 bytes
+	dword,  // 4 bytes
+	udword, // 4 bytes
+	skip,   // skip_bytes
+	pixel   // width*height*bytesperpixel
+};
+
+int type(int item)
 {
-	assert(ptr != NULL);
-	assert(fp != NULL);
-
-	pixmap_free(ptr->matrix);
-	ptr->matrix = NULL;
-
-	int rc = 0;
-
-	enum item_ids{
-		// bitmap header
-		magic_number,
-		file_bytes,
-		reserved_1,
-		reserved_2,
-		pixel_array_offset,
-
-		// DIB header
-		DIB_bytes,
-		width,
-		height,
-		color_planes,
-		bits_per_pixel,
-		compression_method,
-		image_size,
-		horizontal_resolution,
-		vertical_resolution,
-		palette_colors,
-		important_colors,
-
-		// extra bitmasks
-		red_bitmask,
-		green_bitmask,
-		blue_bitmask,
-
-		gap,        // space gap
-		pixel_line, // pixel(s)
-		padding,     // padding
-		gap2
-	};
-
-	enum item_types {
-		uword,  // 2 bytes
-		dword,  // 4 bytes
-		udword, // 4 bytes
-		skip,   // skip_bytes
-		pixel   // width*height*bytesperpixel
-	};
-
 	int type[] = {
 		// bitmap header
 		uword,
@@ -260,11 +253,23 @@ int picture_read(struct picture *ptr, FILE *fp)
 		udword,
 		udword,
 
-		skip,
-		pixel,
+		skip, // 19
+		pixel, // 20
 		skip,
 		skip
 	};
+	return (type[item]);
+}
+
+int picture_read(struct picture *ptr, FILE *fp)
+{
+	assert(ptr != NULL);
+	assert(fp != NULL);
+
+	pixmap_free(ptr->matrix);
+	ptr->matrix = NULL;
+
+	int rc = 0;
 
 	unsigned long offset = 0; // byte offset of the current item
 	unsigned long byte = 0;   // # of bytes from the file start
@@ -300,7 +305,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 		}
 
 		unsigned long item_size = 0;
-		switch (type[item]) {
+		switch (type(item)) {
 			case uword:
 				uw_value += ((uword_t)ch) << (byte - offset) * CHAR_BIT;
 				item_size = 2;
@@ -354,7 +359,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 					pixmap_add(ptr->matrix, uw_value);
 					uw_value = 0;
 				}
-				item_size = ptr->width;
+				item_size = dword_abs(ptr->width) * BYTES_PER_PIXEL;
 				break;
 		}
 		byte++;
@@ -480,9 +485,10 @@ int picture_read(struct picture *ptr, FILE *fp)
 					break;
 
 				case image_size:
-					if (udw_value == dword_abs(ptr->width) * BYTES_PER_PIXEL * dword_abs(ptr->height) * BYTES_PER_PIXEL) {
+					unsigned long tmp = dword_abs(ptr->width) * BYTES_PER_PIXEL;
+					if (udw_value != (tmp + tmp % 4) * dword_abs(ptr->height)) {
 						conflicting_data();
-						fprintf(stderr, "image_size != height * %u * width * %u\n", BYTES_PER_PIXEL, BYTES_PER_PIXEL);
+						fprintf(stderr, "image_size != (width + padding) * height * %u\n", BYTES_PER_PIXEL, BYTES_PER_PIXEL);
 						fprintf(stderr, "(i.e., too many pixels or too little space)\n");
 						rc = 1;
 					} else {
@@ -543,8 +549,8 @@ int picture_read(struct picture *ptr, FILE *fp)
 					skip_bytes = ptr->pixel_array_offset - byte;
 				}
 				if (item == padding) {
-					if ((ptr->width * BYTES_PER_PIXEL) % 4 != 0)
-						skip_bytes = 4 - ((ptr->width * BYTES_PER_PIXEL) % 4);
+					if ((dword_abs(ptr->width) * BYTES_PER_PIXEL) % 4 != 0)
+						skip_bytes = 4 - ((dword_abs(ptr->width) * BYTES_PER_PIXEL) % 4);
 					else if (byte < ptr->pixel_array_offset + ptr->image_size)
 						item = pixel_line;
 				}
@@ -552,7 +558,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 					assert(byte < ptr->file_bytes);
 					skip_bytes = ptr->file_bytes - byte;
 				}
-			} while (type[item] == skip && skip_bytes == 0);
+			} while (type(item) == skip && skip_bytes == 0);
 
 			uw_value = 0;
 			dw_value = 0;
@@ -567,42 +573,134 @@ out:
 	return rc;
 }
 
-void picture_write(struct picture *ptr, FILE *fp)
+int picture_write(struct picture *ptr, FILE *fp)
 {
 	assert(fp != NULL);
 
+	int rc = 0;
 	unsigned long long byte = 0;
-// Bitmap file header
-	fput_uword(ptr->magic_number, fp);
-	fput_udword(ptr->file_bytes, fp);
-	fput_uword(ptr->reserved_1, fp);
-	fput_uword(ptr->reserved_2, fp);
-	fput_udword(ptr->pixel_array_offset, fp);
-	byte += 14;
 
-// DIB HEADER (bytes 14~54)
-	fput_udword(ptr->DIB_bytes, fp);
-	fput_dword(ptr->width, fp);
-	fput_dword(ptr->height, fp);
-	fput_uword(ptr->color_planes, fp);
-	fput_uword(ptr->bits_per_pixel, fp);
-	fput_udword(ptr->compression_method, fp);
-	fput_udword(ptr->image_size, fp);
-	fput_dword(ptr->horizontal_resolution, fp);
-	fput_dword(ptr->vertical_resolution, fp);
-	fput_udword(ptr->palette_colors, fp);
-	fput_udword(ptr->important_colors, fp);
-	byte += 40;
+	int item = 0;
+	while (rc == 0) {
+		switch(item) {
+			// Bitmap file header
+			case magic_number:
+				rc = fput_uword(ptr->magic_number, fp);
+				break;
 
-// Extra bit masks
-	fput_udword(ptr->red_bitmask, fp);
-	fput_udword(ptr->green_bitmask, fp);
-	fput_udword(ptr->blue_bitmask, fp);
-	byte += 12;
+			case file_bytes:
+				rc = fput_udword(ptr->file_bytes, fp);
+				break;
 
-	for (; byte != ptr->pixel_array_offset; byte++)
-		fputc(0, fp);
+			case reserved_1:
+				rc = fput_uword(ptr->reserved_1, fp);
+				break;
 
-// Pixel array
-	pixmap_write(ptr->matrix, fp);
+			case reserved_2:
+				rc = fput_uword(ptr->reserved_2, fp);
+				break;
+
+			case pixel_array_offset:
+				rc = fput_udword(ptr->pixel_array_offset, fp);
+				break;
+
+			// DIB HEADER (bytes 14~54)
+			case DIB_bytes:
+				rc = fput_udword(ptr->DIB_bytes, fp);
+				break;
+
+			case width:
+				rc = fput_dword(ptr->width, fp);
+				break;
+
+			case height:
+				rc = fput_dword(ptr->height, fp);
+				break;
+
+			case color_planes:
+				rc = fput_uword(ptr->color_planes, fp);
+				break;
+
+			case bits_per_pixel:
+				rc = fput_uword(ptr->bits_per_pixel, fp);
+				break;
+
+			case compression_method:
+				rc = fput_udword(ptr->compression_method, fp);
+				break;
+
+			case image_size:
+				rc = fput_udword(ptr->image_size, fp);
+				break;
+
+			case horizontal_resolution:
+				rc = fput_dword(ptr->horizontal_resolution, fp);
+				break;
+
+			case vertical_resolution:
+				rc = fput_dword(ptr->vertical_resolution, fp);
+				break;
+
+			case palette_colors:
+				rc = fput_udword(ptr->palette_colors, fp);
+				break;
+
+			case important_colors:
+				rc = fput_udword(ptr->important_colors, fp);
+				break;
+
+			// Extra bit masks
+			case red_bitmask:
+				rc = fput_udword(ptr->red_bitmask, fp);
+				break;
+
+			case green_bitmask:
+				rc = fput_udword(ptr->green_bitmask, fp);
+				break;
+
+			case blue_bitmask:
+				rc = fput_udword(ptr->blue_bitmask, fp);
+				break;
+
+			case gap:        // space gap
+				for (; byte < ptr->pixel_array_offset && rc == 0; byte++)
+					rc = (fputc(0, fp) != rc);
+				break;
+
+			// Pixel array
+			case pixel_line: // pixel(s)
+				rc = pixmap_write(ptr->matrix, fp);
+				break;
+
+			case gap2:
+				for (; byte < ptr->file_bytes && rc == 0; byte++)
+					rc = (fputc(0, fp) != rc);
+				goto out;
+		}
+		switch (type(item)) {
+			case uword:
+				byte += 2;
+				break;
+
+			case dword:
+				byte += 4;
+				break;
+
+			case udword:
+				byte += 4;
+				break;
+
+			case skip:
+			//	byte += skip_bytes;
+				break;
+
+			case pixel:
+				byte += ptr->image_size;
+				break;
+		}
+		item++;
+	}
+
+out:
+	return rc;
 }

@@ -11,6 +11,7 @@
 
 int main(int argc, char *argv[])
 {
+	int rc = 0;
 	// (test code)
 	char in[] = "about.bmp";
 	char out[] = "out.bin";
@@ -27,20 +28,30 @@ int main(int argc, char *argv[])
 	if (is_pic(in))
 	{
 		picture_new(&pic);
-		picture_read(pic, infile);
+		rc = picture_read(pic, infile);
+		if (rc)
+			goto out;
 		pix = picture_get_pixmap(pic);
-		pixmap_write(pix, outfile);
+		rc = pixmap_write(pix, outfile);
+		if (rc)
+			goto out;
 	} else {
 		pixmap_new(&pix, 78);
-		pixmap_read(pix, infile);
+		rc = pixmap_read(pix, infile);
+		if (rc)
+			goto out;
 		picture_set_pixmap(pic, pix);
 		pix = NULL;
-		picture_write(pic, outfile);
+		rc = picture_write(pic, outfile);
+		if (rc)
+			goto out;
 	}
+
+out:
 	picture_free(pic);
 	pixmap_free(pix);
 
 	fclose(infile);
 	fclose(outfile);
-	return 0;
+	return rc;
 }

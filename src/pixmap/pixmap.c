@@ -130,7 +130,7 @@ int pixmap_read(struct pixmap *ptr, FILE *fp)
 		}
 		if (ch > UCHAR_MAX) {
 			print_error();
-			fprintf(stderr, "The value of byte %lu is out of range [0, %lu].\n", byte, UCHAR_MAX);
+			fprintf(stderr, "The value of byte %lu is out of range [0, %u].\n", byte, UCHAR_MAX);
 			rc = 1;
 			goto out;
 		}

@@ -73,7 +73,6 @@ int fput_dword(dword_t value, FILE *fp)
 		pval = (pval << CHAR_BIT) + arr[i];
 
 	rc = fput_any_word(&pval, 4, fp);
-out:
 	return rc;
 }
 

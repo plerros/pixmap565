@@ -299,7 +299,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 
 		if (ch > UCHAR_MAX) {
 			print_error();
-			fprintf(stderr, "The value of byte %lu is out of range [0, %lu].\n", byte, UCHAR_MAX);
+			fprintf(stderr, "The value of byte %lu is out of range [0, %u].\n", byte, UCHAR_MAX);
 			rc = 1;
 			goto out;
 		}
@@ -376,7 +376,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 				case file_bytes:
 					if (udw_value < 14 + 40 + 12) {
 						bad_data("Bitmap file header", "filesize");
-						fprintf(stderr, "expected:  >= %lu\n", 14 + 40 + 12);
+						fprintf(stderr, "expected:  >= %u\n", 14 + 40 + 12);
 						rc = 1;
 					} else {
 						ptr->file_bytes = udw_value;
@@ -405,7 +405,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 					}
 					else if (udw_value < 40) {
 						bad_data("DIB header", "DIB header size");
-						fprintf(stderr, "expected:  >= %lu\n", 40);
+						fprintf(stderr, "expected:  >= %u\n", 40);
 						rc = 1;
 					} else {
 						ptr->DIB_bytes = udw_value;
@@ -463,7 +463,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 				case color_planes:
 					if (uw_value != 1) {
 						bad_data("DIB header", "color planes");
-						fprintf(stderr, "expected:  %lu\n", 1);
+						fprintf(stderr, "expected:  %u\n", 1);
 						rc = 1;
 					}
 					break;
@@ -471,7 +471,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 				case bits_per_pixel:
 					if (uw_value != 16) {
 						bad_data("DIB header", "bits per pixel");
-						fprintf(stderr, "expected:  %lu\n", 16);
+						fprintf(stderr, "expected:  %u\n", 16);
 						rc = 1;
 					}
 					break;
@@ -479,7 +479,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 				case compression_method:
 					if (udw_value != 3) {
 						bad_data("DIB header", "compression method");
-						fprintf(stderr, "expected:  %lu\n", 3);
+						fprintf(stderr, "expected:  %u\n", 3);
 						rc = 1;
 					}
 					break;
@@ -488,7 +488,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 					unsigned long tmp = dword_abs(ptr->width) * BYTES_PER_PIXEL;
 					if (udw_value != (tmp + tmp % 4) * dword_abs(ptr->height)) {
 						conflicting_data();
-						fprintf(stderr, "image_size != (width + padding) * height * %u\n", BYTES_PER_PIXEL, BYTES_PER_PIXEL);
+						fprintf(stderr, "image_size != (width + padding) * height * %u\n", BYTES_PER_PIXEL);
 						fprintf(stderr, "(i.e., too many pixels or too little space)\n");
 						rc = 1;
 					} else {

@@ -5,31 +5,17 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "file_utils.h"
 #include "picture.h"
 #include "pixmap.h"
 
-#define BYTES_PER_PIXEL (8 / CHAR_BIT + 1)
-
-#if (CHAR_BIT % 8) != 0
-#error unsupported architecture
-#endif
-
-typedef unsigned short uword_t;
-typedef long dword_t;
-typedef unsigned long udword_t;
 // all integer values are stored in little-endian format
 
-static udword_t dword_abs(dword_t value)
-{
-	if (value < 0)
-		value *= -1;
-	
-	return (value);
-}
 
 struct picture
 {
@@ -147,14 +133,10 @@ struct pixmap *picture_get_pixmap(struct picture *ptr)
 
 	return ret;
 }
+
 void print_warning()
 {
 	fprintf(stderr, "\n[WARNING]: ");
-}
-
-void print_error()
-{
-	fprintf(stderr, "\n[ERROR]: ");
 }
 
 void conflicting_data()
@@ -302,17 +284,23 @@ int picture_read(struct picture *ptr, FILE *fp)
 
 			case dword:
 				{
-					long tmp = ch;
+					unsigned char uch = ch;
+					signed char *sch = (signed char *)(&uch);
+
+					bool negative = false;
+					if (byte - offset == 3 && *sch < 0) {
+						*sch *= -1;
+						negative = 1;
+					}
+
+					long tmp = uch;
 					for (int i = 0; i < byte - offset; i++)
 						tmp *= (UCHAR_MAX + 1);
+
 					dw_value += tmp;
 
-					if (byte - offset == 3) {
-						if (ch & ((signed char) -1)) {
-							// is negative?
-							dw_value *= -1;
-						}
-					}
+					if (negative)
+						dw_value *= -1;
 				}
 				item_size = 4;
 				break;
@@ -554,33 +542,6 @@ out:
 		fprintf(stderr, "\n");
 
 	return rc;
-}
-
-static void fput_uword(unsigned short value, FILE *fp)
-{
-	for (int i = 0; i < 2; i++) {
-		int tmp = value % (UCHAR_MAX + 1); // & 0x0f would probably be just fine
-		value = value / (UCHAR_MAX + 1);
-		fputc(tmp, fp);
-	}
-}
-
-static void fput_dword(long value, FILE *fp)
-{
-	for (int i = 0; i < 4; i++) {
-		int tmp = value % (UCHAR_MAX + 1); // & 0x0f would probably be just fine
-		value = value / (UCHAR_MAX + 1);
-		fputc(tmp, fp);
-	}
-}
-
-static void fput_udword(unsigned long value, FILE *fp)
-{
-	for (int i = 0; i < 4; i++) {
-		int tmp = value % (UCHAR_MAX + 1); // & 0x0f would probably be just fine
-		value = value / (UCHAR_MAX + 1);
-		fputc(tmp, fp);
-	}
 }
 
 void picture_write(struct picture *ptr, FILE *fp)

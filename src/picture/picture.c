@@ -125,7 +125,7 @@ void picture_set_pixmap(struct picture *ptr, struct pixmap *matrix)
 
 	ptr->image_size = dword_abs(ptr->width) * dword_abs(ptr->height) * BYTES_PER_PIXEL;
 	ptr->image_size += (ptr->image_size % 4);
-	ptr->file_bytes += ptr->image_size;
+	ptr->file_bytes = ptr->image_size;
 }
 
 struct pixmap *picture_get_pixmap(struct picture *ptr)
@@ -142,6 +142,16 @@ struct pixmap *picture_get_pixmap(struct picture *ptr)
 		pixmap_flip_x(ret);
 
 	return ret;
+}
+
+char *picture_type()
+{
+	return ("BMP565");
+}
+
+char *picture_extension()
+{
+	return (".bmp\0");
 }
 
 bool is_pic(char *filename)

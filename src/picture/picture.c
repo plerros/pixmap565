@@ -144,6 +144,16 @@ struct pixmap *picture_get_pixmap(struct picture *ptr)
 	return ret;
 }
 
+char *picture_type()
+{
+	return ("BMP565");
+}
+
+char *picture_extension()
+{
+	return (".bmp\0");
+}
+
 bool is_pic(char *filename)
 {
 	bool ret = false;

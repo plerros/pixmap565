@@ -17,3 +17,8 @@ make
 ./pixmap565 -i infile.bmp -o outfile
 ./pixmap565 -w width -i infile -o outfile.bmp
 ```
+## Scripts:
+```
+./mkstft28.sh infile outfile
+./mkstft28-icon.sh infile outfile
+```

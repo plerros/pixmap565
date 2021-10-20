@@ -21,7 +21,7 @@ void help()
 		"Usage: pixmap565 [options] -i infile%s -o outfile\n"
 		"   or: pixmap565 [options] -w width -i infile -o outfile%s\n"
 		"Convert between %s image and RGB565 pixmap.\n\n"
-		"  -w [width]   set the width (height is derived from filesize /width)\n"
+		"  -w [width]   set the width (height is derived from filesize/width)\n"
 		"\nOptions:\n"
 		"     --help    display this help and exit\n",
 		picture_extension(),
@@ -109,6 +109,7 @@ int main(int argc, char *argv[])
 			// Detect end of the options
 			if (c == -1)
 				break;
+
 			if (help_flag){
 				help();
 				goto out;
@@ -157,11 +158,11 @@ int main(int argc, char *argv[])
 			help();
 			goto out;
 		}
-		if (!(is_pic(inname) ^ is_pic(outname))) {
+		if (!(is_pic(inname) || is_pic(outname))) {
 			help();
 			goto out;
 		}
-		if (is_pic(outname) && !width_is_set) {
+		if (!is_pic(inname) && is_pic(outname) && !width_is_set) {
 			help();
 			goto out;
 		}
@@ -193,17 +194,21 @@ int main(int argc, char *argv[])
 		if (rc)
 			goto out;
 		pix = picture_get_pixmap(pic);
-		rc = pixmap_write(pix, outfile);
-		if (rc)
-			goto out;
 	} else {
-		pixmap_new(&pix, 78);
+		pixmap_new(&pix, width);
 		rc = pixmap_read(pix, infile);
 		if (rc)
 			goto out;
+	}
+
+	if (is_pic(outname)) {
 		picture_set_pixmap(pic, pix);
 		pix = NULL;
 		rc = picture_write(pic, outfile);
+		if (rc)
+			goto out;
+	} else {
+		rc = pixmap_write(pix, outfile);
 		if (rc)
 			goto out;
 	}

@@ -12,4 +12,8 @@ git clone https://github.com/plerros/pixmap565.git
 ```
 make
 ```
-(to be filled in later)
+## Run:
+```
+./pixmap565 -i infile.bmp -o outfile
+./pixmap565 -w width -i infile -o outfile.bmp
+```

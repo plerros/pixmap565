@@ -174,17 +174,6 @@ int main(int argc, char *argv[])
 		rc = 1;
 		goto out;
 	}
-	if (access(outname, F_OK) == 0) {
-		printf("File '%s' already exists.\n", outname);
-		rc = 1;
-		goto out;
-	}
-	outfile = fopen(outname, "w+");
-	if (outfile == NULL) {
-		printf("Cannot open file '%s'\n", outname);
-		rc = 1;
-		goto out;
-	}
 
 	picture_new(&pic);
 
@@ -199,6 +188,18 @@ int main(int argc, char *argv[])
 		rc = pixmap_read(pix, infile);
 		if (rc)
 			goto out;
+	}
+
+	if (access(outname, F_OK) == 0) {
+		printf("File '%s' already exists.\n", outname);
+		rc = 1;
+		goto out;
+	}
+	outfile = fopen(outname, "w+");
+	if (outfile == NULL) {
+		printf("Cannot open file '%s'\n", outname);
+		rc = 1;
+		goto out;
 	}
 
 	if (is_pic(outname)) {

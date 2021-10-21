@@ -144,28 +144,29 @@ int pixmap_read(struct pixmap *ptr, FILE *fp)
 			case pixel:
 				uw_value += ((uword_t)ch) << ((byte - offset) % BYTES_PER_PIXEL) * CHAR_BIT;
 				if ((byte - offset) % BYTES_PER_PIXEL == BYTES_PER_PIXEL - 1) {
-					assert(uw_value != 0);
 					pixmap_add(ptr, uw_value);
 					uw_value = 0;
 				}
 				assert(ptr->resx != 0);
-				item_size = ptr->resx;
+				item_size = ptr->resx * BYTES_PER_PIXEL;
 				break;
 		}
 		byte++;
 
 		if (byte - offset == item_size) {
 			skip_bytes = 0;
-			do {
-				assert(item < padding);
-				item++; // we assume (item < padding)
-				if (item == padding) {
-					if ((ptr->resx * BYTES_PER_PIXEL) % 4 != 0)
+			switch (item) {
+				case pixel_line:
+					if ((ptr->resx * BYTES_PER_PIXEL) % 4 != 0) {
 						skip_bytes = 4 - ((ptr->resx * BYTES_PER_PIXEL) % 4);
-					else
-						item = pixel_line;
-				}
-			} while (type[item] == skip && skip_bytes == 0);
+						item = padding;
+					}
+					break;
+
+				case padding:
+					item = pixel_line;
+					break;
+			}
 			uw_value = 0;
 			offset = byte;
 		}

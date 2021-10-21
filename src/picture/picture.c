@@ -566,7 +566,10 @@ int picture_read(struct picture *ptr, FILE *fp)
 				}
 				if (item == gap2) {
 					assert(byte < ptr->file_bytes);
-					skip_bytes = ptr->file_bytes - byte;
+					if (byte < ptr->pixel_array_offset + ptr->image_size)
+						item = pixel_line;
+					else
+						skip_bytes = ptr->file_bytes - byte;
 				}
 			} while (type(item) == skip && skip_bytes == 0);
 

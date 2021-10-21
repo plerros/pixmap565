@@ -76,7 +76,7 @@ int fput_dword(dword_t value, FILE *fp)
 	return rc;
 }
 
-int fput_udword(uword_t value, FILE *fp)
+int fput_udword(udword_t value, FILE *fp)
 {
 	int rc = 0;
 	unsigned long long tmp = value;

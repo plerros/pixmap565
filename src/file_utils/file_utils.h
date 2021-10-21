@@ -24,6 +24,6 @@ udword_t dword_abs(dword_t value);
 
 int fput_uword(uword_t value, FILE *fp);
 int fput_dword(dword_t value, FILE *fp);
-int fput_udword(uword_t value, FILE *fp);
+int fput_udword(udword_t value, FILE *fp);
 
 #endif /* PIXMAP565_FILE_UTILS_H */

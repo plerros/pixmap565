@@ -125,7 +125,7 @@ void picture_set_pixmap(struct picture *ptr, struct pixmap *matrix)
 
 	ptr->image_size = dword_abs(ptr->width) * dword_abs(ptr->height) * BYTES_PER_PIXEL;
 	ptr->image_size += (ptr->image_size % 4);
-	ptr->file_bytes = ptr->image_size;
+	ptr->file_bytes = ptr->image_size + ptr->pixel_array_offset;
 }
 
 struct pixmap *picture_get_pixmap(struct picture *ptr)
@@ -365,7 +365,6 @@ int picture_read(struct picture *ptr, FILE *fp)
 			case pixel:
 				uw_value += ((uword_t)ch) << ((byte - offset) % BYTES_PER_PIXEL) * CHAR_BIT;
 				if ((byte - offset) % BYTES_PER_PIXEL == BYTES_PER_PIXEL - 1) {
-					assert(uw_value != 0);
 					pixmap_add(ptr->matrix, uw_value);
 					uw_value = 0;
 				}
@@ -495,14 +494,16 @@ int picture_read(struct picture *ptr, FILE *fp)
 					break;
 
 				case image_size:
-					unsigned long tmp = dword_abs(ptr->width) * BYTES_PER_PIXEL;
-					if (udw_value != (tmp + tmp % 4) * dword_abs(ptr->height)) {
-						conflicting_data();
-						fprintf(stderr, "image_size != (width + padding) * height * %u\n", BYTES_PER_PIXEL);
-						fprintf(stderr, "(i.e., too many pixels or too little space)\n");
-						rc = 1;
-					} else {
-						ptr->image_size = udw_value;
+					{
+						unsigned long tmp = dword_abs(ptr->width) * BYTES_PER_PIXEL;
+						if (udw_value != (tmp + tmp % 4) * dword_abs(ptr->height)) {
+							conflicting_data();
+							fprintf(stderr, "image_size != (width + padding) * height * %u\n", BYTES_PER_PIXEL);
+							fprintf(stderr, "(i.e., too many pixels or too little space)\n");
+							rc = 1;
+						} else {
+							ptr->image_size = udw_value;
+						}
 					}
 					break;
 

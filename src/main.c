@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 			if (c == -1)
 				break;
 
-			if (help_flag){
+			if (help_flag) {
 				help();
 				goto out;
 			}

@@ -4,13 +4,21 @@
 A utility to convert between BMP565 picture and RGB565 pixmap.
 These pixmaps could be used in embedded systems like Makerbase MKS-TFT.
 
+## Dependencies:
+- GNU make
+
 ## Download:
 ```
 git clone https://github.com/plerros/pixmap565.git
 ```
 ## Compile:
+#### GNU/Linux, HaikuOS, Homebrew, WSL
 ```
 make
+```
+#### FreeBSD, OpenIndiana
+```
+gmake
 ```
 ## Run:
 ```

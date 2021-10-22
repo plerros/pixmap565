@@ -20,7 +20,7 @@
 struct picture
 {
 // Bitmap file header (bytes 0~13)
-	uword_t  magic_number; // (header_field)
+#define MAGIC_NUMBER ('B' + ('M' << CHAR_BIT)) // (header_field)
 	udword_t file_bytes;
 	uword_t  reserved_1;
 	uword_t  reserved_2;
@@ -30,9 +30,9 @@ struct picture
 	udword_t DIB_bytes;
 	dword_t  width;  // signed integer
 	dword_t  height; // signed integer
-	uword_t  color_planes;
-	uword_t  bits_per_pixel;
-	udword_t compression_method;
+#define COLOR_PLANES 1ul
+#define BITS_PER_PIXEL 16u
+#define COMPRESSION_METHOD 3ul // BI_BITFIELDS, required for RGB565
 	udword_t image_size; // in bytes
 	dword_t  horizontal_resolution; // pixels per meter, signed integer
 	dword_t  vertical_resolution;   // pixels per meter, signed integer
@@ -40,9 +40,9 @@ struct picture
 	udword_t important_colors;
 
 // Extra bit masks (bytes 54~65)
-	udword_t red_bitmask;
-	udword_t green_bitmask;
-	udword_t blue_bitmask;
+#define RED_BITMASK   0b1111100000000000ul
+#define GREEN_BITMASK 0b0000011111100000ul
+#define BLUE_BITMASK  0b0000000000011111ul
 
 // Color table
 // Gap1
@@ -60,7 +60,6 @@ void picture_new(struct picture **ptr)
 		abort();
 
 // Bitmap file header
-	new->magic_number = 'B' + ('M' << CHAR_BIT);
 	new->file_bytes = 14; // (14 is the size of this header)
 	new->reserved_1 = 0;
 	new->reserved_2 = 0;
@@ -72,9 +71,6 @@ void picture_new(struct picture **ptr)
 	new->pixel_array_offset += new->DIB_bytes;
 	new->width = 0;
 	new->height = 0;
-	new->color_planes = 1;
-	new->bits_per_pixel = 16;
-	new->compression_method = 3; // BI_BITFIELDS, required for RGB565
 	new->image_size = 0;
 	new->horizontal_resolution = 0;
 	new->vertical_resolution = 0;
@@ -82,9 +78,6 @@ void picture_new(struct picture **ptr)
 	new->important_colors = 0;
 
 // Extra bit masks
-	new->red_bitmask   = 0b1111100000000000;
-	new->green_bitmask = 0b0000011111100000;
-	new->blue_bitmask  = 0b0000000000011111;
 
 	new->file_bytes += 12;
 	new->pixel_array_offset += 12;
@@ -363,7 +356,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 		if (byte - offset == item_size) {
 			switch (item) {
 				case magic_number:
-					if (uw_value != ptr->magic_number) {
+					if (uw_value != MAGIC_NUMBER) {
 						bad_data("Bitmap file header", "magic number");
 						rc = 1;
 					}
@@ -457,25 +450,25 @@ int picture_read(struct picture *ptr, FILE *fp)
 					break;
 
 				case color_planes:
-					if (uw_value != 1) {
+					if (uw_value != COLOR_PLANES) {
 						bad_data("DIB header", "color planes");
-						fprintf(stderr, "expected:  %u\n", 1);
+						fprintf(stderr, "expected:  %lu\n", COLOR_PLANES);
 						rc = 1;
 					}
 					break;
 
 				case bits_per_pixel:
-					if (uw_value != 16) {
+					if (uw_value != BITS_PER_PIXEL) {
 						bad_data("DIB header", "bits per pixel");
-						fprintf(stderr, "expected:  %u\n", 16);
+						fprintf(stderr, "expected:  %u\n", BITS_PER_PIXEL);
 						rc = 1;
 					}
 					break;
 
 				case compression_method:
-					if (udw_value != 3) {
+					if (udw_value != COMPRESSION_METHOD) {
 						bad_data("DIB header", "compression method");
-						fprintf(stderr, "expected:  %u\n", 3);
+						fprintf(stderr, "expected:  %lu\n", COMPRESSION_METHOD);
 						rc = 1;
 					}
 					break;
@@ -500,25 +493,25 @@ int picture_read(struct picture *ptr, FILE *fp)
 				//case important_colors:
 
 				case red_bitmask:
-					if (udw_value != ptr->red_bitmask) {
+					if (udw_value != RED_BITMASK) {
 						bad_data("Extra bit masks", "red bitmask");
-						fprintf(stderr, "expected:  %lu\n", ptr->red_bitmask);
+						fprintf(stderr, "expected:  %lu\n", RED_BITMASK);
 						rc = 1;
 					}
 					break;
 
 				case green_bitmask:
-					if (udw_value != ptr->green_bitmask) {
+					if (udw_value != GREEN_BITMASK) {
 						bad_data("Extra bit masks", "green bitmask");
-						fprintf(stderr, "expected:  %lu\n", ptr->green_bitmask);
+						fprintf(stderr, "expected:  %lu\n", GREEN_BITMASK);
 						rc = 1;
 					}
 					break;
 
 				case blue_bitmask:
-					if (udw_value != ptr->blue_bitmask) {
+					if (udw_value != BLUE_BITMASK) {
 						bad_data("Extra bit masks", "blue bitmask");
-						fprintf(stderr, "expected:  %lu\n", ptr->blue_bitmask);
+						fprintf(stderr, "expected:  %lu\n", BLUE_BITMASK);
 						rc = 1;
 					}
 					break;
@@ -586,10 +579,14 @@ int picture_write(struct picture *ptr, FILE *fp)
 		switch(item) {
 			// Bitmap file header
 			case magic_number:
-				rc = fput_uword(ptr->magic_number, fp);
+				rc = fput_uword(MAGIC_NUMBER, fp);
 				break;
 
 			case file_bytes:
+				if (ptr->file_bytes > 2 << 20) {
+					print_warning();
+					fprintf(stderr, "The output file is very large and could cause compatibility issues.\n");
+				}
 				rc = fput_udword(ptr->file_bytes, fp);
 				break;
 
@@ -619,15 +616,15 @@ int picture_write(struct picture *ptr, FILE *fp)
 				break;
 
 			case color_planes:
-				rc = fput_uword(ptr->color_planes, fp);
+				rc = fput_uword(COLOR_PLANES, fp);
 				break;
 
 			case bits_per_pixel:
-				rc = fput_uword(ptr->bits_per_pixel, fp);
+				rc = fput_uword(BITS_PER_PIXEL, fp);
 				break;
 
 			case compression_method:
-				rc = fput_udword(ptr->compression_method, fp);
+				rc = fput_udword(COMPRESSION_METHOD, fp);
 				break;
 
 			case image_size:
@@ -652,24 +649,23 @@ int picture_write(struct picture *ptr, FILE *fp)
 
 			// Extra bit masks
 			case red_bitmask:
-				rc = fput_udword(ptr->red_bitmask, fp);
+				rc = fput_udword(RED_BITMASK, fp);
 				break;
 
 			case green_bitmask:
-				rc = fput_udword(ptr->green_bitmask, fp);
+				rc = fput_udword(GREEN_BITMASK, fp);
 				break;
 
 			case blue_bitmask:
-				rc = fput_udword(ptr->blue_bitmask, fp);
+				rc = fput_udword(BLUE_BITMASK, fp);
 				break;
 
-			case gap:        // space gap
+			case gap:
 				for (; byte < ptr->pixel_array_offset && rc == 0; byte++)
 					rc = (fputc(0, fp) != rc);
 				break;
 
-			// Pixel array
-			case pixel_line: // pixel(s)
+			case pixel_line:
 				rc = pixmap_write(ptr->matrix, fp);
 				break;
 
@@ -692,7 +688,7 @@ int picture_write(struct picture *ptr, FILE *fp)
 				break;
 
 			case skip:
-			//	byte += skip_bytes;
+				// handled in the previous switch case
 				break;
 
 			case pixel:
@@ -701,7 +697,9 @@ int picture_write(struct picture *ptr, FILE *fp)
 		}
 		item++;
 	}
-
 out:
+	if (rc)
+		fprintf(stderr, "\n");
+
 	return rc;
 }

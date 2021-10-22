@@ -26,8 +26,7 @@ struct picture
 	uword_t  reserved_2;
 	udword_t pixel_array_offset;
 
-// DIB HEADER
-	// BITMAPINFOHEADER (bytes 14~53)
+// DIB HEADER: BITMAPINFOHEADER (bytes 14~53)
 	udword_t DIB_bytes;
 	dword_t  width;  // signed integer
 	dword_t  height; // signed integer
@@ -71,7 +70,6 @@ void picture_new(struct picture **ptr)
 	new->DIB_bytes = 40;
 	new->file_bytes += new->DIB_bytes;
 	new->pixel_array_offset += new->DIB_bytes;
-
 	new->width = 0;
 	new->height = 0;
 	new->color_planes = 1;
@@ -84,15 +82,9 @@ void picture_new(struct picture **ptr)
 	new->important_colors = 0;
 
 // Extra bit masks
-
-/*
- * Red   1111100000000000
- * Green 0000011111100000
- * Blue  0000000000011111
- */
-	new->red_bitmask = 0x1f << (6 + 5);
-	new->green_bitmask = 0x3f << 5;
-	new->blue_bitmask = 0x1f;
+	new->red_bitmask   = 0b1111100000000000;
+	new->green_bitmask = 0b0000011111100000;
+	new->blue_bitmask  = 0b0000000000011111;
 
 	new->file_bytes += 12;
 	new->pixel_array_offset += 12;
@@ -174,18 +166,13 @@ out:
 	return ret;
 }
 
-void print_warning()
-{
-	fprintf(stderr, "\n[WARNING]: ");
-}
-
-void conflicting_data()
+static void conflicting_data()
 {
 	print_error();
 	fprintf(stderr, "The input file has conflicting data.\n");
 }
 
-void bad_data(const char *structure, const char *name)
+static void bad_data(const char *structure, const char *name)
 {
 	print_error();
 	fprintf(stderr,
@@ -263,8 +250,8 @@ int type(int item)
 		udword,
 		udword,
 
-		skip, // 19
-		pixel, // 20
+		skip,  // #19
+		pixel, // #20
 		skip,
 		skip
 	};

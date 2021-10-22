@@ -58,14 +58,22 @@ void llnode_free(struct llnode *ptr)
 	} while (ptr != NULL);
 }
 
+static struct llnode *llnode_first(struct llnode *ptr)
+{
+	assert(ptr != NULL);
+	while (ptr->prev != NULL) {
+		assert(ptr == ptr->prev->next);
+		ptr = ptr->prev;
+	}
+	return ptr;
+}
+
 struct llnode *llnode_add(struct llnode *ptr, uint16_t value)
 {
 	assert(ptr != NULL);
-	assert(ptr->next == NULL);
-
-	while (ptr->next != NULL) {
+	while (ptr->next != NULL)
 		ptr = ptr->next;
-	}
+
 	if (ptr->logical_size >= ptr->size) {
 		llnode_new(&(ptr->next), ptr->size);
 		ptr->next->prev = ptr;
@@ -78,11 +86,7 @@ struct llnode *llnode_add(struct llnode *ptr, uint16_t value)
 
 void llnode_flip_x(struct llnode *ptr)
 {
-	assert(ptr != NULL);
-	while (ptr->prev != NULL) {
-		assert(ptr == ptr->prev->next);
-		ptr = ptr->prev;
-	}
+	ptr = llnode_first(ptr);
 	do {
 		assert(ptr->logical_size == ptr->size);
 		for (unsigned long i = 0; i < ptr->logical_size / 2; i++) {
@@ -90,16 +94,13 @@ void llnode_flip_x(struct llnode *ptr)
 			ptr->array[i] = ptr->array[ptr->logical_size -1 - i];
 			ptr->array[ptr->logical_size -1 - i] = tmp;
 		}
+		ptr = ptr->next;
 	} while (ptr != NULL);
 }
 
 void llnode_flip_y(struct llnode *ptr)
 {
-	assert(ptr != NULL);
-	while (ptr->prev != NULL) {
-		assert(ptr == ptr->prev->next);
-		ptr = ptr->prev;
-	}
+	ptr = llnode_first(ptr);
 	do {
 		struct llnode *next = ptr->next;
 
@@ -118,12 +119,8 @@ bool llnode_is_full(struct llnode *ptr)
 
 int llnode_write(struct llnode *ptr, FILE *fp)
 {
-	assert(ptr != NULL);
 	int rc = 0;
-	while (ptr->prev != NULL) {
-		assert(ptr == ptr->prev->next);
-		ptr = ptr->prev;
-	}
+	ptr = llnode_first(ptr);
 	do {
 		assert(ptr->logical_size == ptr->size);
 		for (unsigned long i = 0; i < ptr->logical_size; i++) {

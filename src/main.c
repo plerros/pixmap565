@@ -15,7 +15,7 @@
 #include "picture.h"
 #include "pixmap.h"
 
-void help()
+static void help()
 {
 	printf(
 		"Usage: pixmap565 [options] -i infile%s -o outfile\n"

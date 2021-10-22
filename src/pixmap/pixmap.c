@@ -93,12 +93,10 @@ int pixmap_read(struct pixmap *ptr, FILE *fp)
 		pixel_line, // pixel(s)
 		padding     // padding
 	};
-
 	enum item_types {
 		pixel, // width*height*bytesperpixel
 		skip   // skip_bytes
 	};
-
 	int type[] = {
 		pixel,
 		skip

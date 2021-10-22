@@ -15,6 +15,11 @@ void print_error()
 	fprintf(stderr, "\n[ERROR]: ");
 }
 
+void print_warning()
+{
+	fprintf(stderr, "\n[WARNING]: ");
+}
+
 udword_t dword_abs(dword_t value)
 {
 	if (value < 0)
@@ -23,7 +28,7 @@ udword_t dword_abs(dword_t value)
 	return value;
 }
 
-int fput_any_word(unsigned long long *value, size_t size, FILE *fp)
+static int fput_any_word(unsigned long long *value, size_t size, FILE *fp)
 {
 	int rc = 0;
 	for (size_t i = 0; i < size && !rc; i++) {

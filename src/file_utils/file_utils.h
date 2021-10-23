@@ -18,8 +18,8 @@ typedef unsigned short uword_t;
 typedef long dword_t;
 typedef unsigned long udword_t;
 
-void print_error();
-void print_warning();
+void print_error(void);
+void print_warning(void);
 
 udword_t dword_abs(dword_t value);
 

@@ -18,8 +18,8 @@ void picture_free(struct picture *ptr);
 void picture_set_pixmap(struct picture *ptr, struct pixmap *matrix);
 struct pixmap *picture_get_pixmap(struct picture *ptr);
 
-char *picture_type();
-char *picture_extension();
+char *picture_type(void);
+char *picture_extension(void);
 bool is_pic(char *filename);
 
 int picture_read(struct picture *ptr, FILE *fp);

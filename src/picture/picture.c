@@ -129,12 +129,12 @@ struct pixmap *picture_get_pixmap(struct picture *ptr)
 	return ret;
 }
 
-char *picture_type()
+char *picture_type(void)
 {
 	return ("BMP565");
 }
 
-char *picture_extension()
+char *picture_extension(void)
 {
 	return (".bmp\0");
 }
@@ -159,7 +159,7 @@ out:
 	return ret;
 }
 
-static void conflicting_data()
+static void conflicting_data(void)
 {
 	print_error();
 	fprintf(stderr, "The input file has conflicting data.\n");

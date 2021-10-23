@@ -10,12 +10,12 @@
 
 #include "file_utils.h"
 
-void print_error()
+void print_error(void)
 {
 	fprintf(stderr, "\n[ERROR]: ");
 }
 
-void print_warning()
+void print_warning(void)
 {
 	fprintf(stderr, "\n[WARNING]: ");
 }

@@ -302,36 +302,47 @@ int picture_read(struct picture *ptr, FILE *fp)
 				break;
 
 			case dword:
-				{
-					short      ss = dw_value;
-					int        si = dw_value;
-					long       sl = dw_value;
-					long long sll = dw_value;
+				item_size = 4;
+				// Pick an integer type that can hold a 4-byte value:
+				if (USHRT_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // short
+					// Convert to that type:
+					short s_value = dw_value;
 
-					unsigned char *arr = NULL;
-					if (sizeof(short) == 4) {
-						arr = (void *)(&ss);
-					}
-					else if (sizeof(int) == 4) {
-						arr = (void *)(&si);
-					}
-					else if (sizeof(long) == 4) {
-						arr = (void *)(&sl);
-					}
-					else if (sizeof(long long) == 4) {
-						arr = (void *)(&sll);
-					} else {
-						fprintf(stderr, "Unsupported system: None of the integer types are 4 bytes long\n");
-						abort();
-					}
-					arr[byte - offset] = ch;
-					dw_value = 0;
-					for (int i = 3; i >= 0; i--)
-						dw_value = (dw_value << CHAR_BIT) + arr[i];
+					// Edit the value:
+					unsigned short u_value = ch;
+					u_value <<= (CHAR_BIT * (byte-offset));
+					s_value |= u_value;
 
-					item_size = 4;
+					// Convert back to dword_t:
+					dw_value = s_value;
+					break;
 				}
-				break;
+				if (UINT_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // int
+					int s_value = dw_value;
+					unsigned int u_value = ch;
+					u_value <<= (CHAR_BIT * (byte-offset));
+					s_value |= u_value;
+					dw_value = s_value;
+					break;
+				}
+				if (ULONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // long
+					long s_value = dw_value;
+					unsigned long u_value = ch;
+					u_value <<= (CHAR_BIT * (byte-offset));
+					s_value |= u_value;
+					dw_value = s_value;
+					break;
+				}
+				if (ULLONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // long long
+					long long s_value = dw_value;
+					unsigned long long u_value = ch;
+					u_value <<= (CHAR_BIT * (byte-offset));
+					s_value |= u_value;
+					dw_value = s_value;
+					break;
+				}
+				fprintf(stderr, "Unsupported system: None of the integer types hold a 4-byte value\n");
+				abort();
 
 			case udword:
 				udw_value += ((udword_t)ch) << (byte - offset) * CHAR_BIT;

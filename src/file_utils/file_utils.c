@@ -50,33 +50,37 @@ int fput_uword(uword_t value, FILE *fp)
 int fput_dword(dword_t value, FILE *fp)
 {
 	int rc = 0;
-
-	short      ss = value;
-	int        si = value;
-	long       sl = value;
-	long long sll = value;
-
-	unsigned char *arr = NULL;
-	if (sizeof(short) == 4) {
-		arr = (void *)(&ss);
-	}
-	else if (sizeof(int) == 4) {
-		arr = (void *)(&si);
-	}
-	else if (sizeof(long) == 4) {
-		arr = (void *)(&sl);
-	}
-	else if (sizeof(long long) == 4) {
-		arr = (void *)(&sll);
-	}
-	else {
-		fprintf(stderr, "Unsupported system: None of the integer types are 4 bytes long\n");
-		abort();
-	}
 	unsigned long long pval = 0;
-	for (int i = 3; i >= 0; i--)
-		pval = (pval << CHAR_BIT) + arr[i];
 
+	// Pick an integer type that can hold a 4-byte value:
+	if (USHRT_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // short
+		short s_value = value;
+		unsigned short u_value = s_value;
+		pval = u_value;
+		goto out;
+	}
+	if (UINT_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // int
+		int s_value = value;
+		unsigned int u_value = s_value;
+		pval = u_value;
+		goto out;
+	}
+	if (ULONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // long
+		long s_value = value;
+		unsigned long u_value = s_value;
+		pval = u_value;
+		goto out;
+	}
+	if (ULLONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // long long
+		long long s_value = value;
+		unsigned long long u_value = s_value;
+		pval = u_value;
+		goto out;
+	}
+	fprintf(stderr, "Unsupported system: None of the integer types hold a 4-byte value\n");
+	abort();
+
+out:
 	rc = fput_any_word(&pval, 4, fp);
 	return rc;
 }

@@ -26,6 +26,12 @@ gmake
 ./pixmap565 -w width -i infile -o outfile.bmp
 ```
 ## Scripts:
+#### Give them execute permission:
+```
+chmod +x ./mkstft28.sh
+chmod +x ./mkstft28-icon.sh
+```
+#### Run:
 ```
 ./mkstft28.sh infile outfile
 ./mkstft28-icon.sh infile outfile

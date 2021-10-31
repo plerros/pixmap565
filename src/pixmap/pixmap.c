@@ -135,35 +135,35 @@ int pixmap_read(struct pixmap *ptr, FILE *fp)
 
 		unsigned long item_size = 0;
 		switch (type[item]) {
-			case skip:
-				item_size = skip_bytes;
-				break;
+		case skip:
+			item_size = skip_bytes;
+			break;
 
-			case pixel:
-				uw_value += ((uword_t)ch) << ((byte - offset) % BYTES_PER_PIXEL) * CHAR_BIT;
-				if ((byte - offset) % BYTES_PER_PIXEL == BYTES_PER_PIXEL - 1) {
-					pixmap_add(ptr, uw_value);
-					uw_value = 0;
-				}
-				assert(ptr->resx != 0);
-				item_size = ptr->resx * BYTES_PER_PIXEL;
-				break;
+		case pixel:
+			uw_value += ((uword_t)ch) << ((byte - offset) % BYTES_PER_PIXEL) * CHAR_BIT;
+			if ((byte - offset) % BYTES_PER_PIXEL == BYTES_PER_PIXEL - 1) {
+				pixmap_add(ptr, uw_value);
+				uw_value = 0;
+			}
+			assert(ptr->resx != 0);
+			item_size = ptr->resx * BYTES_PER_PIXEL;
+			break;
 		}
 		byte++;
 
 		if (byte - offset == item_size) {
 			skip_bytes = 0;
 			switch (item) {
-				case pixel_line:
-					if ((ptr->resx * BYTES_PER_PIXEL) % 4 != 0) {
-						skip_bytes = 4 - ((ptr->resx * BYTES_PER_PIXEL) % 4);
-						item = padding;
-					}
-					break;
+			case pixel_line:
+				if ((ptr->resx * BYTES_PER_PIXEL) % 4 != 0) {
+					skip_bytes = 4 - ((ptr->resx * BYTES_PER_PIXEL) % 4);
+					item = padding;
+				}
+				break;
 
-				case padding:
-					item = pixel_line;
-					break;
+			case padding:
+				item = pixel_line;
+				break;
 			}
 			uw_value = 0;
 			offset = byte;

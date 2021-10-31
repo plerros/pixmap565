@@ -296,246 +296,243 @@ int picture_read(struct picture *ptr, FILE *fp)
 
 		unsigned long item_size = 0;
 		switch (type(item)) {
-			case uword:
-				uw_value += ((uword_t)ch) << (byte - offset) * CHAR_BIT;
-				item_size = 2;
+		case uword:
+			uw_value += ((uword_t)ch) << (byte - offset) * CHAR_BIT;
+			item_size = 2;
+			break;
+
+		case dword:
+			item_size = 4;
+			// Pick an integer type that can hold a 4-byte value:
+			if (USHRT_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // short
+				// Convert to that type:
+				short s_value = dw_value;
+
+				// Edit the value:
+				unsigned short u_value = ch;
+				u_value <<= (CHAR_BIT * (byte-offset));
+				s_value |= u_value;
+
+				// Convert back to dword_t:
+				dw_value = s_value;
 				break;
-
-			case dword:
-				item_size = 4;
-				// Pick an integer type that can hold a 4-byte value:
-				if (USHRT_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // short
-					// Convert to that type:
-					short s_value = dw_value;
-
-					// Edit the value:
-					unsigned short u_value = ch;
-					u_value <<= (CHAR_BIT * (byte-offset));
-					s_value |= u_value;
-
-					// Convert back to dword_t:
-					dw_value = s_value;
-					break;
-				}
-				if (UINT_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // int
-					int s_value = dw_value;
-					unsigned int u_value = ch;
-					u_value <<= (CHAR_BIT * (byte-offset));
-					s_value |= u_value;
-					dw_value = s_value;
-					break;
-				}
-				if (ULONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // long
-					long s_value = dw_value;
-					unsigned long u_value = ch;
-					u_value <<= (CHAR_BIT * (byte-offset));
-					s_value |= u_value;
-					dw_value = s_value;
-					break;
-				}
-				if (ULLONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // long long
-					long long s_value = dw_value;
-					unsigned long long u_value = ch;
-					u_value <<= (CHAR_BIT * (byte-offset));
-					s_value |= u_value;
-					dw_value = s_value;
-					break;
-				}
-				fprintf(stderr, "Unsupported system: None of the integer types hold a 4-byte value\n");
-				abort();
-
-			case udword:
-				udw_value += ((udword_t)ch) << (byte - offset) * CHAR_BIT;
-				item_size = 4;
+			}
+			if (UINT_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // int
+				int s_value = dw_value;
+				unsigned int u_value = ch;
+				u_value <<= (CHAR_BIT * (byte-offset));
+				s_value |= u_value;
+				dw_value = s_value;
 				break;
-
-			case skip:
-				item_size = skip_bytes;
+			}
+			if (ULONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // long
+				long s_value = dw_value;
+				unsigned long u_value = ch;
+				u_value <<= (CHAR_BIT * (byte-offset));
+				s_value |= u_value;
+				dw_value = s_value;
 				break;
-
-			case pixel:
-				uw_value += ((uword_t)ch) << ((byte - offset) % BYTES_PER_PIXEL) * CHAR_BIT;
-				if ((byte - offset) % BYTES_PER_PIXEL == BYTES_PER_PIXEL - 1) {
-					pixmap_add(ptr->matrix, uw_value);
-					uw_value = 0;
-				}
-				item_size = dword_abs(ptr->width) * BYTES_PER_PIXEL;
+			}
+			if (ULLONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // long long
+				long long s_value = dw_value;
+				unsigned long long u_value = ch;
+				u_value <<= (CHAR_BIT * (byte-offset));
+				s_value |= u_value;
+				dw_value = s_value;
 				break;
+			}
+			fprintf(stderr, "Unsupported system: None of the integer types hold a 4-byte value\n");
+			abort();
+
+		case udword:
+			udw_value += ((udword_t)ch) << (byte - offset) * CHAR_BIT;
+			item_size = 4;
+			break;
+
+		case skip:
+			item_size = skip_bytes;
+			break;
+
+		case pixel:
+			uw_value += ((uword_t)ch) << ((byte - offset) % BYTES_PER_PIXEL) * CHAR_BIT;
+			if ((byte - offset) % BYTES_PER_PIXEL == BYTES_PER_PIXEL - 1) {
+				pixmap_add(ptr->matrix, uw_value);
+				uw_value = 0;
+			}
+			item_size = dword_abs(ptr->width) * BYTES_PER_PIXEL;
+			break;
 		}
 		byte++;
 
 		if (byte - offset == item_size) {
 			switch (item) {
-				case magic_number:
-					if (uw_value != MAGIC_NUMBER) {
-						bad_data("Bitmap file header", "magic number");
-						rc = 1;
-					}
-					break;
+			case magic_number:
+				if (uw_value != MAGIC_NUMBER) {
+					bad_data("Bitmap file header", "magic number");
+					rc = 1;
+				}
+				break;
 
-				case file_bytes:
-					if (udw_value < 14 + 40 + 12) {
-						bad_data("Bitmap file header", "filesize");
-						fprintf(stderr, "expected:  >= %u\n", 14 + 40 + 12);
-						rc = 1;
-					} else {
-						ptr->file_bytes = udw_value;
-					}
-					break;
+			case file_bytes:
+				if (udw_value < 14 + 40 + 12) {
+					bad_data("Bitmap file header", "filesize");
+					fprintf(stderr, "expected:  >= %u\n", 14 + 40 + 12);
+					rc = 1;
+				} else {
+					ptr->file_bytes = udw_value;
+				}
+				break;
 
-				//case reserved_1:
-				//case reserved_2:
+			//case reserved_1:
+			//case reserved_2:
 
-				case pixel_array_offset:
-					if (udw_value > ptr->file_bytes) {
+			case pixel_array_offset:
+				if (udw_value > ptr->file_bytes) {
+					conflicting_data();
+					fprintf(stderr, "pixel_array_offset > filesize.\n");
+					rc = 1;
+				} else {
+					ptr->pixel_array_offset = udw_value;
+				}
+				break;
+
+			case DIB_bytes:
+				if (udw_value > ptr->pixel_array_offset - 14) {
+					conflicting_data();
+					fprintf(stderr, "DIB_header_size > pixel_array_offset - BMP_header_size\n");
+					fprintf(stderr, "(i.e., the DIB header and pixel array overlap)\n");
+					rc = 1;
+				} else if (udw_value < 40) {
+					bad_data("DIB header", "DIB header size");
+					fprintf(stderr, "expected:  >= %u\n", 40);
+					rc = 1;
+				} else {
+					ptr->DIB_bytes = udw_value;
+				}
+				break;
+
+			case width:
+				if (dw_value <= 0) {
+					print_warning();
+					fprintf(stderr, "negative width\n");
+				}
+				/*
+				 * Because we are converting from signed to unsigned, and BYTES_PER_PIXEL <= 2:
+				 * abs(dw_value) <= ULONG_MAX / BYTES_PER_PIXEL
+				 */
+				if (dword_abs(dw_value) * BYTES_PER_PIXEL > (ptr->file_bytes - ptr->pixel_array_offset)) {
+					conflicting_data();
+					fprintf(stderr, "width * %u > filesize - pixel_array_offset\n", BYTES_PER_PIXEL);
+					fprintf(stderr, "(i.e., too many pixels or too little space)\n");
+					rc = 1;
+				} else {
+					ptr->width = dw_value;
+					assert(ptr->matrix == NULL);
+					pixmap_new(&(ptr->matrix), dword_abs(ptr->width));
+				}
+				break;
+
+			case height:
+				if (dw_value <= 0) {
+					print_warning();
+					fprintf(stderr, "negative height\n");
+				}
+				if (dword_abs(dw_value) > (ptr->file_bytes - ptr->pixel_array_offset)) {
+					conflicting_data();
+					fprintf(stderr, "height * %u > filesize - pixel_array_offset\n", BYTES_PER_PIXEL);
+					fprintf(stderr, "(i.e., too many pixels or too little space)\n");
+					rc = 1;
+				} else if (dword_abs(dw_value) * BYTES_PER_PIXEL > ULONG_MAX /  dword_abs(ptr->width)) {
+					conflicting_data();
+					fprintf(stderr, "height * width * %u > %lu\n", BYTES_PER_PIXEL, ULONG_MAX);
+					fprintf(stderr, "(i.e., too many pixels)\n");
+					rc = 1;
+				} else if (dword_abs(ptr->width) * dword_abs(dw_value) * BYTES_PER_PIXEL > ptr->file_bytes - ptr->pixel_array_offset) {
+					conflicting_data();
+					fprintf(stderr, "height * width * %u > filesize - pixel_array_offset\n", BYTES_PER_PIXEL);
+					fprintf(stderr, "(i.e., too many pixels or too little space)\n");
+					rc = 1;
+				} else {
+					ptr->height = dw_value;
+				}
+				break;
+
+			case color_planes:
+				if (uw_value != COLOR_PLANES) {
+					bad_data("DIB header", "color planes");
+					fprintf(stderr, "expected:  %lu\n", COLOR_PLANES);
+					rc = 1;
+				}
+				break;
+
+			case bits_per_pixel:
+				if (uw_value != BITS_PER_PIXEL) {
+					bad_data("DIB header", "bits per pixel");
+					fprintf(stderr, "expected:  %u\n", BITS_PER_PIXEL);
+					rc = 1;
+				}
+				break;
+
+			case compression_method:
+				if (udw_value != COMPRESSION_METHOD) {
+					bad_data("DIB header", "compression method");
+					fprintf(stderr, "expected:  %lu\n", COMPRESSION_METHOD);
+					rc = 1;
+				}
+				break;
+
+			case image_size:
+				{
+					unsigned long tmp = dword_abs(ptr->width) * BYTES_PER_PIXEL;
+					if (udw_value != (tmp + tmp % 4) * dword_abs(ptr->height)) {
 						conflicting_data();
-						fprintf(stderr, "pixel_array_offset > filesize.\n");
-						rc = 1;
-					} else {
-						ptr->pixel_array_offset = udw_value;
-					}
-					break;
-
-				case DIB_bytes:
-					if (udw_value > ptr->pixel_array_offset - 14) {
-						conflicting_data();
-						fprintf(stderr, "DIB_header_size > pixel_array_offset - BMP_header_size\n");
-						fprintf(stderr, "(i.e., the DIB header and pixel array overlap)\n");
-						rc = 1;
-					}
-					else if (udw_value < 40) {
-						bad_data("DIB header", "DIB header size");
-						fprintf(stderr, "expected:  >= %u\n", 40);
-						rc = 1;
-					} else {
-						ptr->DIB_bytes = udw_value;
-					}
-					break;
-
-				case width:
-					if (dw_value <= 0) {
-						print_warning();
-						fprintf(stderr, "negative width\n");
-					}
-					/*
-					 * Because we are converting from signed to unsigned, and BYTES_PER_PIXEL <= 2:
-					 * abs(dw_value) <= ULONG_MAX / BYTES_PER_PIXEL
-					 */
-					if (dword_abs(dw_value) * BYTES_PER_PIXEL > (ptr->file_bytes - ptr->pixel_array_offset)) {
-						conflicting_data();
-						fprintf(stderr, "width * %u > filesize - pixel_array_offset\n", BYTES_PER_PIXEL);
+						fprintf(stderr, "image_size != (width + padding) * height * %u\n", BYTES_PER_PIXEL);
 						fprintf(stderr, "(i.e., too many pixels or too little space)\n");
 						rc = 1;
 					} else {
-						ptr->width = dw_value;
-						assert(ptr->matrix == NULL);
-						pixmap_new(&(ptr->matrix), dword_abs(ptr->width));
+						ptr->image_size = udw_value;
 					}
-					break;
+				}
+				break;
 
-				case height:
-					if (dw_value <= 0) {
-						print_warning();
-						fprintf(stderr, "negative height\n");
-					}
-					if (dword_abs(dw_value) > (ptr->file_bytes - ptr->pixel_array_offset)) {
-						conflicting_data();
-						fprintf(stderr, "height * %u > filesize - pixel_array_offset\n", BYTES_PER_PIXEL);
-						fprintf(stderr, "(i.e., too many pixels or too little space)\n");
-						rc = 1;
-					}
-					else if (dword_abs(dw_value) * BYTES_PER_PIXEL > ULONG_MAX /  dword_abs(ptr->width)) {
-						conflicting_data();
-						fprintf(stderr, "height * width * %u > %lu\n", BYTES_PER_PIXEL, ULONG_MAX);
-						fprintf(stderr, "(i.e., too many pixels)\n");
-						rc = 1;
-					}
-					else if (dword_abs(ptr->width) * dword_abs(dw_value) * BYTES_PER_PIXEL > ptr->file_bytes - ptr->pixel_array_offset) {
-						conflicting_data();
-						fprintf(stderr, "height * width * %u > filesize - pixel_array_offset\n", BYTES_PER_PIXEL);
-						fprintf(stderr, "(i.e., too many pixels or too little space)\n");
-						rc = 1;
-					} else {
-						ptr->height = dw_value;
-					}
-					break;
+			//case horizontal_resolution:
+			//case vertical_resolution:
+			//case palette_colors:
+			//case important_colors:
 
-				case color_planes:
-					if (uw_value != COLOR_PLANES) {
-						bad_data("DIB header", "color planes");
-						fprintf(stderr, "expected:  %lu\n", COLOR_PLANES);
-						rc = 1;
-					}
-					break;
+			case red_bitmask:
+				if (udw_value != RED_BITMASK) {
+					bad_data("Extra bit masks", "red bitmask");
+					fprintf(stderr, "expected:  %lu\n", RED_BITMASK);
+					rc = 1;
+				}
+				break;
 
-				case bits_per_pixel:
-					if (uw_value != BITS_PER_PIXEL) {
-						bad_data("DIB header", "bits per pixel");
-						fprintf(stderr, "expected:  %u\n", BITS_PER_PIXEL);
-						rc = 1;
-					}
-					break;
+			case green_bitmask:
+				if (udw_value != GREEN_BITMASK) {
+					bad_data("Extra bit masks", "green bitmask");
+					fprintf(stderr, "expected:  %lu\n", GREEN_BITMASK);
+					rc = 1;
+				}
+				break;
 
-				case compression_method:
-					if (udw_value != COMPRESSION_METHOD) {
-						bad_data("DIB header", "compression method");
-						fprintf(stderr, "expected:  %lu\n", COMPRESSION_METHOD);
-						rc = 1;
-					}
-					break;
+			case blue_bitmask:
+				if (udw_value != BLUE_BITMASK) {
+					bad_data("Extra bit masks", "blue bitmask");
+					fprintf(stderr, "expected:  %lu\n", BLUE_BITMASK);
+					rc = 1;
+				}
+				break;
 
-				case image_size:
-					{
-						unsigned long tmp = dword_abs(ptr->width) * BYTES_PER_PIXEL;
-						if (udw_value != (tmp + tmp % 4) * dword_abs(ptr->height)) {
-							conflicting_data();
-							fprintf(stderr, "image_size != (width + padding) * height * %u\n", BYTES_PER_PIXEL);
-							fprintf(stderr, "(i.e., too many pixels or too little space)\n");
-							rc = 1;
-						} else {
-							ptr->image_size = udw_value;
-						}
-					}
-					break;
+			//case gap:
+			//case pixel_line:
+			//case padding:
 
-				//case horizontal_resolution:
-				//case vertical_resolution:
-				//case palette_colors:
-				//case important_colors:
+			case gap2:
+				goto out;
 
-				case red_bitmask:
-					if (udw_value != RED_BITMASK) {
-						bad_data("Extra bit masks", "red bitmask");
-						fprintf(stderr, "expected:  %lu\n", RED_BITMASK);
-						rc = 1;
-					}
-					break;
-
-				case green_bitmask:
-					if (udw_value != GREEN_BITMASK) {
-						bad_data("Extra bit masks", "green bitmask");
-						fprintf(stderr, "expected:  %lu\n", GREEN_BITMASK);
-						rc = 1;
-					}
-					break;
-
-				case blue_bitmask:
-					if (udw_value != BLUE_BITMASK) {
-						bad_data("Extra bit masks", "blue bitmask");
-						fprintf(stderr, "expected:  %lu\n", BLUE_BITMASK);
-						rc = 1;
-					}
-					break;
-
-				//case gap:
-				//case pixel_line:
-				//case padding:
-
-				case gap2:
-					goto out;
-
-				default:
-					break;
+			default:
+				break;
 			}
 			if (rc)
 				break;
@@ -588,123 +585,123 @@ int picture_write(struct picture *ptr, FILE *fp)
 	int item = 0;
 	while (rc == 0) {
 		switch(item) {
-			// Bitmap file header
-			case magic_number:
-				rc = fput_uword(MAGIC_NUMBER, fp);
-				break;
+		// Bitmap file header
+		case magic_number:
+			rc = fput_uword(MAGIC_NUMBER, fp);
+			break;
 
-			case file_bytes:
-				if (ptr->file_bytes > 2 << 20) {
-					print_warning();
-					fprintf(stderr, "The output file is very large and could cause compatibility issues.\n");
-				}
-				rc = fput_udword(ptr->file_bytes, fp);
-				break;
+		case file_bytes:
+			if (ptr->file_bytes > 2 << 20) {
+				print_warning();
+				fprintf(stderr, "The output file is very large and could cause compatibility issues.\n");
+			}
+			rc = fput_udword(ptr->file_bytes, fp);
+			break;
 
-			case reserved_1:
-				rc = fput_uword(ptr->reserved_1, fp);
-				break;
+		case reserved_1:
+			rc = fput_uword(ptr->reserved_1, fp);
+			break;
 
-			case reserved_2:
-				rc = fput_uword(ptr->reserved_2, fp);
-				break;
+		case reserved_2:
+			rc = fput_uword(ptr->reserved_2, fp);
+			break;
 
-			case pixel_array_offset:
-				rc = fput_udword(ptr->pixel_array_offset, fp);
-				break;
+		case pixel_array_offset:
+			rc = fput_udword(ptr->pixel_array_offset, fp);
+			break;
 
-			// DIB HEADER (bytes 14~54)
-			case DIB_bytes:
-				rc = fput_udword(ptr->DIB_bytes, fp);
-				break;
+		// DIB HEADER (bytes 14~54)
+		case DIB_bytes:
+			rc = fput_udword(ptr->DIB_bytes, fp);
+			break;
 
-			case width:
-				rc = fput_dword(ptr->width, fp);
-				break;
+		case width:
+			rc = fput_dword(ptr->width, fp);
+			break;
 
-			case height:
-				rc = fput_dword(ptr->height, fp);
-				break;
+		case height:
+			rc = fput_dword(ptr->height, fp);
+			break;
 
-			case color_planes:
-				rc = fput_uword(COLOR_PLANES, fp);
-				break;
+		case color_planes:
+			rc = fput_uword(COLOR_PLANES, fp);
+			break;
 
-			case bits_per_pixel:
-				rc = fput_uword(BITS_PER_PIXEL, fp);
-				break;
+		case bits_per_pixel:
+			rc = fput_uword(BITS_PER_PIXEL, fp);
+			break;
 
-			case compression_method:
-				rc = fput_udword(COMPRESSION_METHOD, fp);
-				break;
+		case compression_method:
+			rc = fput_udword(COMPRESSION_METHOD, fp);
+			break;
 
-			case image_size:
-				rc = fput_udword(ptr->image_size, fp);
-				break;
+		case image_size:
+			rc = fput_udword(ptr->image_size, fp);
+			break;
 
-			case horizontal_resolution:
-				rc = fput_dword(ptr->horizontal_resolution, fp);
-				break;
+		case horizontal_resolution:
+			rc = fput_dword(ptr->horizontal_resolution, fp);
+			break;
 
-			case vertical_resolution:
-				rc = fput_dword(ptr->vertical_resolution, fp);
-				break;
+		case vertical_resolution:
+			rc = fput_dword(ptr->vertical_resolution, fp);
+			break;
 
-			case palette_colors:
-				rc = fput_udword(ptr->palette_colors, fp);
-				break;
+		case palette_colors:
+			rc = fput_udword(ptr->palette_colors, fp);
+			break;
 
-			case important_colors:
-				rc = fput_udword(ptr->important_colors, fp);
-				break;
+		case important_colors:
+			rc = fput_udword(ptr->important_colors, fp);
+			break;
 
-			// Extra bit masks
-			case red_bitmask:
-				rc = fput_udword(RED_BITMASK, fp);
-				break;
+		// Extra bit masks
+		case red_bitmask:
+			rc = fput_udword(RED_BITMASK, fp);
+			break;
 
-			case green_bitmask:
-				rc = fput_udword(GREEN_BITMASK, fp);
-				break;
+		case green_bitmask:
+			rc = fput_udword(GREEN_BITMASK, fp);
+			break;
 
-			case blue_bitmask:
-				rc = fput_udword(BLUE_BITMASK, fp);
-				break;
+		case blue_bitmask:
+			rc = fput_udword(BLUE_BITMASK, fp);
+			break;
 
-			case gap:
-				for (; byte < ptr->pixel_array_offset && rc == 0; byte++)
-					rc = (fputc(0, fp) != rc);
-				break;
+		case gap:
+			for (; byte < ptr->pixel_array_offset && rc == 0; byte++)
+				rc = (fputc(0, fp) != rc);
+			break;
 
-			case pixel_line:
-				rc = pixmap_write(ptr->matrix, fp);
-				break;
+		case pixel_line:
+			rc = pixmap_write(ptr->matrix, fp);
+			break;
 
-			case gap2:
-				for (; byte < ptr->file_bytes && rc == 0; byte++)
-					rc = (fputc(0, fp) != rc);
-				goto out;
+		case gap2:
+			for (; byte < ptr->file_bytes && rc == 0; byte++)
+				rc = (fputc(0, fp) != rc);
+			goto out;
 		}
 		switch (type(item)) {
-			case uword:
-				byte += 2;
-				break;
+		case uword:
+			byte += 2;
+			break;
 
-			case dword:
-				byte += 4;
-				break;
+		case dword:
+			byte += 4;
+			break;
 
-			case udword:
-				byte += 4;
-				break;
+		case udword:
+			byte += 4;
+			break;
 
-			case skip:
-				// handled in the previous switch case
-				break;
+		case skip:
+			// handled in the previous switch case
+			break;
 
-			case pixel:
-				byte += ptr->image_size;
-				break;
+		case pixel:
+			byte += ptr->image_size;
+			break;
 		}
 		item++;
 	}

@@ -116,42 +116,42 @@ int main(int argc, char *argv[])
 			}
 
 			switch (c) {
-				case 0:
-					break;
+			case 0:
+				break;
 
-				case 'i':
-					if (infile_is_set) {
-						help();
-						goto out;
-					}
-					strnewcpy(&inname, optarg);
-					infile_is_set = true;
-					break;
-
-				case 'o':
-					if (outfile_is_set) {
-						help();
-						goto out;
-					}
-					strnewcpy(&outname, optarg);
-					outfile_is_set = true;
-					break;
-
-				case 'w':
-					if (width_is_set) {
-						help();
-						goto out;
-					}
-					rc = strto_ul(optarg, &width);
-					width_is_set = true;
-					break;
-
-				case '?':
+			case 'i':
+				if (infile_is_set) {
 					help();
 					goto out;
+				}
+				strnewcpy(&inname, optarg);
+				infile_is_set = true;
+				break;
 
-				default:
-					abort();
+			case 'o':
+				if (outfile_is_set) {
+					help();
+					goto out;
+				}
+				strnewcpy(&outname, optarg);
+				outfile_is_set = true;
+				break;
+
+			case 'w':
+				if (width_is_set) {
+					help();
+					goto out;
+				}
+				rc = strto_ul(optarg, &width);
+				width_is_set = true;
+				break;
+
+			case '?':
+				help();
+				goto out;
+
+			default:
+				abort();
 			}
 		}
 		if (!infile_is_set || !outfile_is_set) {
@@ -177,8 +177,7 @@ int main(int argc, char *argv[])
 
 	picture_new(&pic);
 
-	if (is_pic(inname))
-	{
+	if (is_pic(inname)) {
 		rc = picture_read(pic, infile);
 		if (rc)
 			goto out;

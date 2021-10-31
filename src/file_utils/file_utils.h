@@ -14,9 +14,35 @@
 
 #include <stdio.h>
 
-typedef unsigned short uword_t;
-typedef long dword_t;
-typedef unsigned long udword_t;
+// Pick an integer type that can hold 2 bytes
+#if (USHRT_MAX >> CHAR_BIT >= UCHAR_MAX)
+	typedef unsigned short uword_t;
+#elif (UINT_MAX >> CHAR_BIT == UCHAR_MAX)
+	typedef unsigned int uword_t;
+#elif (ULONG_MAX >> CHAR_BIT == UCHAR_MAX)
+	typedef unsigned long uword_t;
+#elif (ULLONG_MAX >> CHAR_BIT == UCHAR_MAX)
+	typedef unsigned long long uword_t;
+#else
+#error Unsupported system: None of the integer types can hold 2 bytes.
+#endif
+
+// Pick an integer type with value bits equal to 4 bytes
+#if (USHRT_MAX >> 3 * CHAR_BIT == UCHAR_MAX)
+	typedef short dword_t;
+	typedef unsigned short udword_t;
+#elif (UINT_MAX >> 3 * CHAR_BIT == UCHAR_MAX)
+	typedef int dword_t;
+	typedef unsigned int udword_t;
+#elif (ULONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX)
+	typedef long dword_t;
+	typedef unsigned long udword_t;
+#elif (ULLONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX)
+	typedef long long dword_t;
+	typedef unsigned long long udword_t;
+#else
+#error Unsupported system: None of the integer types have value bits equal to 4 bytes.
+#endif
 
 void print_error(void);
 void print_warning(void);

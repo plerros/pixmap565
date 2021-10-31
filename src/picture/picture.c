@@ -302,47 +302,13 @@ int picture_read(struct picture *ptr, FILE *fp)
 			break;
 
 		case dword:
+			{
+				udword_t u_value = ch;
+				u_value <<= (CHAR_BIT * (byte-offset));
+				dw_value |= u_value;
+			}
 			item_size = 4;
-			// Pick an integer type that can hold a 4-byte value:
-			if (USHRT_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // short
-				// Convert to that type:
-				short s_value = dw_value;
-
-				// Edit the value:
-				unsigned short u_value = ch;
-				u_value <<= (CHAR_BIT * (byte-offset));
-				s_value |= u_value;
-
-				// Convert back to dword_t:
-				dw_value = s_value;
-				break;
-			}
-			if (UINT_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // int
-				int s_value = dw_value;
-				unsigned int u_value = ch;
-				u_value <<= (CHAR_BIT * (byte-offset));
-				s_value |= u_value;
-				dw_value = s_value;
-				break;
-			}
-			if (ULONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // long
-				long s_value = dw_value;
-				unsigned long u_value = ch;
-				u_value <<= (CHAR_BIT * (byte-offset));
-				s_value |= u_value;
-				dw_value = s_value;
-				break;
-			}
-			if (ULLONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // long long
-				long long s_value = dw_value;
-				unsigned long long u_value = ch;
-				u_value <<= (CHAR_BIT * (byte-offset));
-				s_value |= u_value;
-				dw_value = s_value;
-				break;
-			}
-			fprintf(stderr, "Unsupported system: None of the integer types hold a 4-byte value\n");
-			abort();
+			break;
 
 		case udword:
 			udw_value += ((udword_t)ch) << (byte - offset) * CHAR_BIT;

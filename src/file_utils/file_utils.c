@@ -50,37 +50,8 @@ int fput_uword(uword_t value, FILE *fp)
 int fput_dword(dword_t value, FILE *fp)
 {
 	int rc = 0;
-	unsigned long long pval = 0;
-
-	// Pick an integer type that can hold a 4-byte value:
-	if (USHRT_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // short
-		short s_value = value;
-		unsigned short u_value = s_value;
-		pval = u_value;
-		goto out;
-	}
-	if (UINT_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // int
-		int s_value = value;
-		unsigned int u_value = s_value;
-		pval = u_value;
-		goto out;
-	}
-	if (ULONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // long
-		long s_value = value;
-		unsigned long u_value = s_value;
-		pval = u_value;
-		goto out;
-	}
-	if (ULLONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX) { // long long
-		long long s_value = value;
-		unsigned long long u_value = s_value;
-		pval = u_value;
-		goto out;
-	}
-	fprintf(stderr, "Unsupported system: None of the integer types hold a 4-byte value\n");
-	abort();
-
-out:
+	udword_t u_value = value;
+	unsigned long long pval = u_value;
 	rc = fput_any_word(&pval, 4, fp);
 	return rc;
 }

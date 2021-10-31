@@ -17,11 +17,11 @@
 // Pick an integer type that can hold 2 bytes
 #if (USHRT_MAX >> CHAR_BIT >= UCHAR_MAX)
 	typedef unsigned short uword_t;
-#elif (UINT_MAX >> CHAR_BIT == UCHAR_MAX)
+#elif (UINT_MAX >> CHAR_BIT >= UCHAR_MAX)
 	typedef unsigned int uword_t;
-#elif (ULONG_MAX >> CHAR_BIT == UCHAR_MAX)
+#elif (ULONG_MAX >> CHAR_BIT >= UCHAR_MAX)
 	typedef unsigned long uword_t;
-#elif (ULLONG_MAX >> CHAR_BIT == UCHAR_MAX)
+#elif (ULLONG_MAX >> CHAR_BIT >= UCHAR_MAX)
 	typedef unsigned long long uword_t;
 #else
 #error Unsupported system: None of the integer types can hold 2 bytes.

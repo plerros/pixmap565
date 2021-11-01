@@ -10,6 +10,12 @@
 #include <stdint.h>
 #include <stdio.h>
 
+/*
+ * llnode:
+ *
+ * This structure is a node of an unrolled linked list.
+ */
+
 struct llnode;
 
 void llnode_new(struct llnode **ptr, unsigned long size);

@@ -14,7 +14,6 @@
 struct llnode
 {
 	struct llnode *next;
-	struct llnode *prev;
 	uint16_t *array;
 	unsigned long size;
 	unsigned long logical_size; // first unoccupied element
@@ -33,7 +32,6 @@ void llnode_new(struct llnode **ptr, unsigned long size)
 
 	new->logical_size = 0;
 	new->next = NULL;
-	new->prev = NULL;
 
 	*ptr = new;
 }
@@ -42,30 +40,13 @@ void llnode_free(struct llnode *ptr)
 {
 	if (ptr == NULL)
 		return;
-
-	while (ptr->prev != NULL) {
-		assert(ptr == ptr->prev->next);
-		ptr = ptr->prev;
-	}
 	do {
 		struct llnode *next = ptr->next;
-		if (next != NULL)
-			assert(ptr == next->prev);
 
 		free(ptr->array);
 		free(ptr);
 		ptr = next;
 	} while (ptr != NULL);
-}
-
-static struct llnode *llnode_first(struct llnode *ptr)
-{
-	assert(ptr != NULL);
-	while (ptr->prev != NULL) {
-		assert(ptr == ptr->prev->next);
-		ptr = ptr->prev;
-	}
-	return ptr;
 }
 
 struct llnode *llnode_add(struct llnode *ptr, uint16_t value)
@@ -76,7 +57,6 @@ struct llnode *llnode_add(struct llnode *ptr, uint16_t value)
 
 	if (ptr->logical_size >= ptr->size) {
 		llnode_new(&(ptr->next), ptr->size);
-		ptr->next->prev = ptr;
 		ptr = ptr->next;
 	}
 	ptr->array[ptr->logical_size] = value;
@@ -86,7 +66,6 @@ struct llnode *llnode_add(struct llnode *ptr, uint16_t value)
 
 void llnode_flip_x(struct llnode *ptr)
 {
-	ptr = llnode_first(ptr);
 	do {
 		assert(ptr->logical_size == ptr->size);
 		for (unsigned long i = 0; i < ptr->logical_size / 2; i++) {
@@ -100,13 +79,12 @@ void llnode_flip_x(struct llnode *ptr)
 
 void llnode_flip_y(struct llnode *ptr)
 {
-	ptr = llnode_first(ptr);
+	struct llnode *prev = NULL; 
 	do {
 		struct llnode *next = ptr->next;
 
-		ptr->next = ptr->prev;
-		ptr->prev = next;
-
+		ptr->next = prev;
+		prev = ptr;
 		ptr = next;
 	} while (ptr != NULL);
 }
@@ -120,7 +98,6 @@ bool llnode_is_full(struct llnode *ptr)
 int llnode_write(struct llnode *ptr, FILE *fp)
 {
 	int rc = 0;
-	ptr = llnode_first(ptr);
 	do {
 		assert(ptr->logical_size == ptr->size);
 		for (unsigned long i = 0; i < ptr->logical_size; i++) {

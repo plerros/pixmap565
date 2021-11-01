@@ -14,13 +14,13 @@
 
 struct pixmap
 {
-	unsigned long resx;
-	unsigned long resy;
+	udword_t resx;
+	udword_t resy;
 	struct llnode *first;
 	struct llnode *last;
 };
 
-void pixmap_new(struct pixmap **ptr, unsigned long x)
+void pixmap_new(struct pixmap **ptr, udword_t x)
 {
 	assert(ptr != NULL);
 	assert(*ptr == NULL);
@@ -48,13 +48,13 @@ void pixmap_free(struct pixmap *ptr)
 void pixmap_flip_x(struct pixmap *ptr)
 {
 	assert(ptr != NULL);
-	llnode_flip_x(ptr->first);
+	llnode_reverse_data(ptr->first);
 }
 
 void pixmap_flip_y(struct pixmap *ptr)
 {
 	assert(ptr != NULL);
-	llnode_flip_y(ptr->first);
+	llnode_reverse_nodes(ptr->first);
 	struct llnode *tmp = ptr->first;
 	ptr->first = ptr->last;
 	ptr->last = tmp;
@@ -74,12 +74,12 @@ void pixmap_add(struct pixmap *ptr, uint16_t pixel)
 		ptr->resy += 1;
 }
 
-unsigned long pixmap_get_x(struct pixmap *ptr)
+udword_t pixmap_get_x(struct pixmap *ptr)
 {
 	return(ptr->resx);
 }
 
-unsigned long pixmap_get_y(struct pixmap *ptr)
+udword_t pixmap_get_y(struct pixmap *ptr)
 {
 	return(ptr->resy);
 }
@@ -102,8 +102,8 @@ int pixmap_read(struct pixmap *ptr, FILE *fp)
 		skip
 	};
 
-	unsigned long offset = 0; // byte offset of the current item
-	unsigned long byte = 0;   // # of bytes from the file start
+	udword_t offset = 0; // byte offset of the current item
+	udword_t byte = 0;   // # of bytes from the file start
 
 	uword_t uw_value = 0;
 	int item = 0;
@@ -128,12 +128,12 @@ int pixmap_read(struct pixmap *ptr, FILE *fp)
 		}
 		if (ch > UCHAR_MAX) {
 			print_error();
-			fprintf(stderr, "The value of byte %lu is out of range [0, %u].\n", byte, UCHAR_MAX);
+			fprintf(stderr, "The value of byte %llu is out of range [0, %u].\n", (unsigned long long)byte, UCHAR_MAX);
 			rc = 1;
 			goto out;
 		}
 
-		unsigned long item_size = 0;
+		udword_t item_size = 0;
 		switch (type[item]) {
 		case skip:
 			item_size = skip_bytes;

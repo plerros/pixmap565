@@ -261,8 +261,8 @@ int picture_read(struct picture *ptr, FILE *fp)
 
 	int rc = 0;
 
-	unsigned long offset = 0; // byte offset of the current item
-	unsigned long byte = 0;   // # of bytes from the file start
+	udword_t offset = 0; // byte offset of the current item
+	udword_t byte = 0;   // # of bytes from the file start
 
 	uword_t uw_value = 0;
 	dword_t dw_value = 0;
@@ -289,12 +289,12 @@ int picture_read(struct picture *ptr, FILE *fp)
 
 		if (ch > UCHAR_MAX) {
 			print_error();
-			fprintf(stderr, "The value of byte %lu is out of range [0, %u].\n", byte, UCHAR_MAX);
+			fprintf(stderr, "The value of byte %llu is out of range [0, %u].\n", (unsigned long long)byte, UCHAR_MAX);
 			rc = 1;
 			goto out;
 		}
 
-		unsigned long item_size = 0;
+		udword_t item_size = 0;
 		switch (type(item)) {
 		case uword:
 			uw_value += ((uword_t)ch) << (byte - offset) * CHAR_BIT;
@@ -449,7 +449,7 @@ int picture_read(struct picture *ptr, FILE *fp)
 
 			case image_size:
 				{
-					unsigned long tmp = dword_abs(ptr->width) * BYTES_PER_PIXEL;
+					udword_t tmp = dword_abs(ptr->width) * BYTES_PER_PIXEL;
 					if (udw_value != (tmp + tmp % 4) * dword_abs(ptr->height)) {
 						conflicting_data();
 						fprintf(stderr, "image_size != (width + padding) * height * %u\n", BYTES_PER_PIXEL);
@@ -546,7 +546,7 @@ int picture_write(struct picture *ptr, FILE *fp)
 	assert(fp != NULL);
 
 	int rc = 0;
-	unsigned long long byte = 0;
+	udword_t byte = 0;
 
 	int item = 0;
 	while (rc == 0) {

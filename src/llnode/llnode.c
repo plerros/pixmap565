@@ -15,18 +15,18 @@ struct llnode
 {
 	struct llnode *next;
 	uint16_t *array;
-	unsigned long size;
-	unsigned long logical_size; // first unoccupied element
+	udword_t size;
+	udword_t logical_size; // first unoccupied element
 };
 
-void llnode_new(struct llnode **ptr, unsigned long size)
+void llnode_new(struct llnode **ptr, udword_t size)
 {
 	struct llnode *new = malloc(sizeof(struct llnode));
 	if (new == NULL)
 		abort();
 
 	new->size = size;
-	new->array = malloc(sizeof(unsigned long) * new->size);
+	new->array = malloc(sizeof(udword_t) * new->size);
 	if (new->array == NULL)
 		abort();
 
@@ -64,11 +64,11 @@ struct llnode *llnode_add(struct llnode *ptr, uint16_t value)
 	return ptr;
 }
 
-void llnode_flip_x(struct llnode *ptr)
+void llnode_reverse_data(struct llnode *ptr)
 {
 	do {
 		assert(ptr->logical_size == ptr->size);
-		for (unsigned long i = 0; i < ptr->logical_size / 2; i++) {
+		for (udword_t i = 0; i < ptr->logical_size / 2; i++) {
 			uint16_t tmp = ptr->array[i];
 			ptr->array[i] = ptr->array[ptr->logical_size -1 - i];
 			ptr->array[ptr->logical_size -1 - i] = tmp;
@@ -77,7 +77,7 @@ void llnode_flip_x(struct llnode *ptr)
 	} while (ptr != NULL);
 }
 
-void llnode_flip_y(struct llnode *ptr)
+void llnode_reverse_nodes(struct llnode *ptr)
 {
 	struct llnode *prev = NULL; 
 	do {
@@ -100,12 +100,12 @@ int llnode_write(struct llnode *ptr, FILE *fp)
 	int rc = 0;
 	do {
 		assert(ptr->logical_size == ptr->size);
-		for (unsigned long i = 0; i < ptr->logical_size; i++) {
+		for (udword_t i = 0; i < ptr->logical_size; i++) {
 			rc = fput_uword(ptr->array[i], fp);
 			if (rc)
 				goto out;
 		}
-		for (unsigned long i = 0; i < (ptr->logical_size * BYTES_PER_PIXEL) % 4; i++) {
+		for (udword_t i = 0; i < (ptr->logical_size * BYTES_PER_PIXEL) % 4; i++) {
 			rc = (fputc(0, fp) != 0);
 			if (rc)
 				goto out;

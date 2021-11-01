@@ -29,15 +29,19 @@
 
 // Pick an integer type with value bits equal to 4 bytes
 #if (USHRT_MAX >> 3 * CHAR_BIT == UCHAR_MAX)
+#define UDWORD_MAX USHRT_MAX
 	typedef short dword_t;
 	typedef unsigned short udword_t;
 #elif (UINT_MAX >> 3 * CHAR_BIT == UCHAR_MAX)
+#define UDWORD_MAX UINT_MAX
 	typedef int dword_t;
 	typedef unsigned int udword_t;
 #elif (ULONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX)
+#define UDWORD_MAX ULONG_MAX
 	typedef long dword_t;
 	typedef unsigned long udword_t;
 #elif (ULLONG_MAX >> 3 * CHAR_BIT == UCHAR_MAX)
+#define UDWORD_MAX ULLONG_MAX
 	typedef long long dword_t;
 	typedef unsigned long long udword_t;
 #else

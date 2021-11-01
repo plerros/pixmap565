@@ -41,22 +41,22 @@ static void strnewcpy(char **new, const char *old)
 	strcpy(*new, old);
 }
 
-static bool willoverflow(unsigned long x, unsigned digit)
+static bool willoverflow(udword_t x, unsigned digit)
 {
 	assert(digit < 10);
-	if (x > ULONG_MAX / 10)
+	if (x > UDWORD_MAX / 10)
 		return true;
-	if (x == ULONG_MAX / 10 && digit > ULONG_MAX % 10)
+	if (x == UDWORD_MAX / 10 && digit > UDWORD_MAX % 10)
 		return true;
 	return false;
 }
 
-static int strto_ul(const char *str, unsigned long *number) // string to unsigned long
+static int strto_ul(const char *str, udword_t *number) // string to unsigned long
 {
 	assert(str != NULL);
 	assert(number != NULL);
 	int err = 0;
-	unsigned long tmp = 0;
+	udword_t tmp = 0;
 	for (size_t i = 0; isgraph(str[i]); i++) {
 		if (!isdigit(str[i])) {
 			err = 1;
@@ -72,7 +72,7 @@ static int strto_ul(const char *str, unsigned long *number) // string to unsigne
 	*number = tmp;
 out:
 	if (err)
-		fprintf(stderr, "Input out of range: [0, %lu]\n", ULONG_MAX);
+		fprintf(stderr, "Input out of range: [0, %llu]\n", (unsigned long long) UDWORD_MAX);
 	return err;
 }
 
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 
 	char *inname = NULL;
 	char *outname = NULL;
-	unsigned long width = 0;
+	udword_t width = 0;
 
 	struct picture *pic = NULL;
 	struct pixmap *pix = NULL;

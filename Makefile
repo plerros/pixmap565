@@ -30,7 +30,7 @@ $(BUILD)/llnode.o: ./src/llnode/llnode.c
 	$(CC) $(WARNINGS) $(OPTIMIZE) -I ./src/file_utils -c $^ -o $@
 
 $(BUILD)/main.o: ./src/main.c
-	$(CC) $(WARNINGS) $(OPTIMIZE) -I ./src/picture -I ./src/pixmap -c $^ -o $@
+	$(CC) $(WARNINGS) $(OPTIMIZE) -I ./src/file_utils -I ./src/picture -I ./src/pixmap -c $^ -o $@
 
 $(BUILD)/picture.o: ./src/picture/picture.c
 	$(CC) $(WARNINGS) $(OPTIMIZE) -I ./src/file_utils -I ./src/pixmap -c $^ -o $@

@@ -13,18 +13,18 @@
 /*
  * llnode:
  *
- * This structure is a node of an unrolled linked list.
+ * An unrolled linked list node
  */
 
 struct llnode;
 
-void llnode_new(struct llnode **ptr, unsigned long size);
+void llnode_new(struct llnode **ptr, udword_t size);
 void llnode_free(struct llnode *ptr);
 
 struct llnode *llnode_add(struct llnode *ptr, uint16_t value);
 
-void llnode_flip_x(struct llnode *ptr);
-void llnode_flip_y(struct llnode *ptr);
+void llnode_reverse_data(struct llnode *ptr);
+void llnode_reverse_nodes(struct llnode *ptr);
 
 bool llnode_is_full(struct llnode *ptr);
 int llnode_write(struct llnode *ptr, FILE *fp);

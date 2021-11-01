@@ -79,7 +79,7 @@ void llnode_reverse_data(struct llnode *ptr)
 
 void llnode_reverse_nodes(struct llnode *ptr)
 {
-	struct llnode *prev = NULL; 
+	struct llnode *prev = NULL;
 	do {
 		struct llnode *next = ptr->next;
 

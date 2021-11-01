@@ -20,7 +20,7 @@ all: builddir $(TARGET)
 builddir:
 	mkdir -p $(BUILD)
 
-$(TARGET): $(BUILD)/file_utils.o $(BUILD)/llnode.o $(BUILD)/main.o $(BUILD)/picture.o $(BUILD)/pixmap.o 
+$(TARGET): $(BUILD)/file_utils.o $(BUILD)/llnode.o $(BUILD)/main.o $(BUILD)/picture.o $(BUILD)/pixmap.o
 	$(CC) $(WARNINGS) $(OPTIMIZE) $^ -o $@
 
 $(BUILD)/file_utils.o: ./src/file_utils/file_utils.c

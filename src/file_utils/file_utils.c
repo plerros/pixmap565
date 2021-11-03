@@ -41,25 +41,19 @@ static int fput_any_word(unsigned long long *value, size_t size, FILE *fp)
 
 int fput_uword(uword_t value, FILE *fp)
 {
-	int rc = 0;
-	unsigned long long tmp = value;
-	rc = fput_any_word(&tmp, 2, fp);
-	return rc;
+	unsigned long long pval = value;
+	return (fput_any_word(&pval, 2, fp));
 }
 
 int fput_dword(dword_t value, FILE *fp)
 {
-	int rc = 0;
 	udword_t u_value = value;
 	unsigned long long pval = u_value;
-	rc = fput_any_word(&pval, 4, fp);
-	return rc;
+	return (fput_any_word(&pval, 4, fp));
 }
 
 int fput_udword(udword_t value, FILE *fp)
 {
-	int rc = 0;
-	unsigned long long tmp = value;
-	rc = fput_any_word(&tmp, 4, fp);
-	return rc;
+	unsigned long long pval = value;
+	return (fput_any_word(&pval, 4, fp));
 }

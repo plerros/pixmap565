@@ -78,7 +78,6 @@ void picture_new(struct picture **ptr)
 	new->important_colors = 0;
 
 // Extra bit masks
-
 	new->file_bytes += 12;
 	new->pixel_array_offset += 12;
 
@@ -149,7 +148,7 @@ bool is_pic(char *filename)
 	if (size < 5)
 		goto out;
 
-	char bmp_ext[5] = ".bmp\0";
+	char bmp_ext[5] = picture_extension();
 	char tmp[5];
 	strcpy(tmp, &(filename[size - 4]));
 
@@ -243,10 +242,10 @@ int type(int item)
 		udword,
 		udword,
 
-		skip,  // #19
-		pixel, // #20
-		skip,
-		skip
+		skip, // gap1
+		pixel,
+		skip, // padding
+		skip  // gap2
 	};
 	return (type[item]);
 }
@@ -520,7 +519,6 @@ int picture_read(struct picture *ptr, FILE *fp)
 						item = pixel_line;
 				}
 				if (item == gap2) {
-					assert(byte < ptr->file_bytes);
 					if (byte < ptr->pixel_array_offset + ptr->image_size)
 						item = pixel_line;
 					else

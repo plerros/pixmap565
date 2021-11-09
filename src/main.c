@@ -24,9 +24,9 @@ static void help(void)
 		"  -w [width]   set the width (height is derived from filesize/width)\n"
 		"\nOptions:\n"
 		"     --help    display this help and exit\n",
-		picture_extension(),
-		picture_extension(),
-		picture_type()
+		PICTURE_EXTENSION,
+		PICTURE_EXTENSION,
+		PICTURE_TYPE
 	);
 }
 

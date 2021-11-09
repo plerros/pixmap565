@@ -128,16 +128,6 @@ struct pixmap *picture_get_pixmap(struct picture *ptr)
 	return ret;
 }
 
-char *picture_type(void)
-{
-	return ("BMP565");
-}
-
-char *picture_extension(void)
-{
-	return (".bmp\0");
-}
-
 bool is_pic(char *filename)
 {
 	bool ret = false;
@@ -145,12 +135,12 @@ bool is_pic(char *filename)
 		goto out;
 
 	size_t size = strlen(filename);
-	if (size < 5)
+	if (size <= strlen(PICTURE_EXTENSION))
 		goto out;
 
-	char bmp_ext[5] = picture_extension();
-	char tmp[5];
-	strcpy(tmp, &(filename[size - 4]));
+	char bmp_ext[] = PICTURE_EXTENSION;
+	char tmp[] = PICTURE_EXTENSION; // ensure that we have enough characters
+	strcpy(tmp, &(filename[size - strlen(PICTURE_EXTENSION)]));
 
 	if (strcmp(tmp, bmp_ext) == 0)
 		ret = true;

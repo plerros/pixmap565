@@ -107,8 +107,9 @@ void picture_set_pixmap(struct picture *ptr, struct pixmap *matrix)
 	ptr->width = pixmap_get_x(matrix);
 	ptr->height = pixmap_get_y(matrix);
 
-	ptr->image_size = dword_abs(ptr->width) * dword_abs(ptr->height) * BYTES_PER_PIXEL;
-	ptr->image_size += (ptr->image_size % 4);
+	ptr->image_size = dword_abs(ptr->width) * BYTES_PER_PIXEL;
+	ptr->image_size += ptr->image_size % 4;
+	ptr->image_size *= dword_abs(ptr->height);
 	ptr->file_bytes = ptr->image_size + ptr->pixel_array_offset;
 }
 
